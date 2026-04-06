@@ -103,7 +103,6 @@ modules:
       copr:
         - yalter/niri            # niri compositor
         - che/zed                # Zed editor
-        - alternateved/cliphist  # clipboard history daemon
       files:
         - https://github.com/terrapkg/subatomic-repos/raw/main/terra.repo
         # dropbox.repo is baked in via the files module (avoids CI network block)
@@ -112,7 +111,6 @@ modules:
       packages:
         - niri
         - zed
-        - cliphist
         - dropbox
 
   # ── Wayland compositor stack ──────────────────────────────────────────────
