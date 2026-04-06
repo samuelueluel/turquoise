@@ -104,6 +104,7 @@ modules:
         - yalter/niri            # niri compositor
         - che/zed                # Zed editor
         - alternateved/cliphist  # clipboard history daemon
+        - ferra/rofi-wayland     # rofi-wayland fork
       files:
         - https://github.com/terrapkg/subatomic-repos/raw/main/terra.repo
         # dropbox.repo is baked in via the files module (avoids CI network block)
@@ -127,7 +128,8 @@ modules:
         - swaylock
         - swayidle
         - swaybg
-        - fuzzel
+        # - fuzzel
+        - rofi-wayland
         - SwayNotificationCenter
         - wlsunset
         - kanshi
@@ -429,8 +431,6 @@ modules:
   - type: script
     scripts:
       - build-niri-window-buttons.sh
-      - build-anyrun.sh
-      - setup-anyrun.sh
 
   # ── Build nwg-look from source ────────────────────────────────────────────
   # dustee071/unstable-apps COPR does not publish Fedora 43 builds
