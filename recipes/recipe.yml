@@ -329,7 +329,7 @@ modules:
   # ── Homebrew Framework ─────────────────────────────────────────────────────
   - type: brew
     brew-analytics: false
-    upgrade: false
+    auto-upgrade: false
 
   # ── Themes + appearance ────────────────────────────────────────────────────
   - type: dnf
