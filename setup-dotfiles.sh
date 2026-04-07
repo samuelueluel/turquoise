@@ -66,6 +66,18 @@ if [[ -d "$HOME/system_config_git/vivaldi" ]]; then
     cp ~/system_config_git/vivaldi/llm/contextmenu.json    ~/.config/vivaldi-llm/Default/ 2>/dev/null || true
 fi
 
+# ── 4.7. Restore Claude and Gemini settings ──────────────────────────────────
+if [[ -d "$HOME/system_config_git/claude-code" ]]; then
+    echo "Restoring Claude Code settings..."
+    mkdir -p ~/.claude
+    cp ~/system_config_git/claude-code/.claude/settings.json ~/.claude/settings.json 2>/dev/null || true
+fi
+if [[ -d "$HOME/system_config_git/gemini-cli" ]]; then
+    echo "Restoring Gemini CLI settings..."
+    mkdir -p ~/.gemini
+    cp ~/system_config_git/gemini-cli/.gemini/settings.json ~/.gemini/settings.json 2>/dev/null || true
+fi
+
 # ── 5. Fix Homebrew Installation & Install Packages (Host) ───────────────
 echo "Fixing Homebrew installation (requires password)..."
 # Force extraction of Homebrew to /home on atomic desktops
@@ -84,6 +96,11 @@ brew install gcc make
 
 # Install gemini-cli
 brew install gemini-cli
+
+# Install rtk and initialize hooks
+brew install rtk
+rtk init -g --yes || true
+rtk init -g --gemini --yes || true
 
 # Install claude-code
 brew install --cask claude-code # note this is the "stable" release in Homebrew; see claude-code latest
