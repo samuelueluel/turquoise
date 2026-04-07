@@ -88,12 +88,6 @@ brew install gemini-cli
 # Install claude-code
 brew install --cask claude-code
 
-# ── 6. Create Distrobox Dev Environment ──────────────────────────────────────
-echo "Setting up Distrobox dev-box..."
-if ! distrobox list | grep -q "dev-box"; then
-    distrobox create -Y -n dev-box -i registry.fedoraproject.org/fedora-toolbox:43
-fi
-
 # ── 6. Refresh desktop file MIME database ────────────────────────────────────
 update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
 

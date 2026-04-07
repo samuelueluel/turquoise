@@ -47,9 +47,6 @@ modules:
   # braille-printer-app: Braille printer support, not needed
   # hplip*: HP-specific printer drivers, no HP printer on this system
   # gutenprint*: Epson/Canon printer drivers; Brother network printer uses IPP
-  # pam-u2f, pam_yubico, pamu2fcfg, yubikey-manager: YubiKey/U2F auth stack; no YubiKey on this system
-  # openrgb-udev-rules: RGB lighting hardware support; no RGB peripherals
-  # oversteer-udev: racing wheel support; no racing wheel
   - type: dnf
     remove:
       packages:
@@ -87,12 +84,6 @@ modules:
         - gutenprint
         - gutenprint-cups
         - gutenprint-libs
-        - pam-u2f
-        - pam_yubico
-        - pamu2fcfg
-        - yubikey-manager
-        - openrgb-udev-rules
-        - oversteer-udev
 
   # ── RPM Fusion nonfree + tainted ─────────────────────────────────────────
   # base-main pre-configures RPM Fusion free; we add nonfree for codecs.
@@ -139,7 +130,7 @@ modules:
         - kanshi
         - grim
         - slurp
-        - wl-clipboard # think already in base-main
+        # - wl-clipboard          # already in base-main
         - polkit-kde
         - xdg-user-dirs
         - xdg-utils
@@ -176,7 +167,7 @@ modules:
         - zsh-autosuggestions
         - zsh-syntax-highlighting
         - bash-completion
-        - fzf # think already in base-main
+        # - fzf                    # already in base-main
         - zoxide
         - nano
         # nano-syntax-highlighting: not in Fedora repos
@@ -217,7 +208,7 @@ modules:
         - pipewire-pulse
         - wireplumber
         - rtkit
-        - alsa-firmware # think already in base-main
+        - alsa-firmware
         - alsa-utils
         - alsa-sof-firmware # Sound Open Firmware (Fedora name for sof-firmware)
         - pipewire-gstreamer
@@ -281,7 +272,7 @@ modules:
         - mpv
         - swayimg # Wayland image viewer
         - yt-dlp
-        - ffmpeg # think already in base-main
+        # - ffmpeg                # already in base-main
         - gstreamer1-plugin-libav
         - gstreamer1-vaapi
         - gstreamer1-plugins-good
@@ -298,37 +289,37 @@ modules:
       install-weak-deps: false
       packages:
         - git
-        - rsync # think already in base-main
+        # - rsync                 # already in base-main
         - fd-find
         - ripgrep
         - chezmoi # dotfile manager (replaces stow for this image)
-        - smartmontools # think already in base-main
-        - usbutils # think already in base-main
+        # - smartmontools         # already in base-main
+        # - usbutils              # already in base-main
         - inxi
-        - dmidecode # think already in base-main
+        # - dmidecode             # already in base-main
         - hdparm
         - sg3_utils
         - lsscsi
         - sysfsutils
-        - whois # think already in base-main
-        - ethtool # think already in base-main
-        - bind-utils # think already in base-main
-        - iputils # think already in base-main
-        - hostname # think already in base-main
+        # - whois                 # already in base-main
+        # - ethtool               # already in base-main
+        # - bind-utils            # already in base-main
+        # - iputils               # already in base-main
+        # - hostname              # already in base-main
         - inotify-tools
         - plocate
         - fastfetch
         - duf
         - glances
         - tldr
-        - man-db # think already in base-main
+        # - man-db                # already in base-main
         - hwinfo
         # gnome-keyring (from base-main) handles org.freedesktop.secrets for Vivaldi/Chromium
         # kf6-kwallet / kf6-kwallet-pam: removed — no PAM auto-unlock in Fedora 43 and gnome-keyring covers the use case
-        - python3 # think already in base-main
-        - python3-evdev # think already in base-main
-        - os-prober # think already in base-main
-        # - cosign               # already in base-main (pinned version from GitHub releases — do not install via dnf)
+        # - python3               # already in base-main
+        # - python3-evdev         # already in base-main
+        # - os-prober             # already in base-main
+        # - cosign               # already in base-main
         - libxcrypt-compat # homebrew dependency that must be on system
 
   # ── Homebrew Framework ─────────────────────────────────────────────────────
@@ -358,7 +349,7 @@ modules:
         - google-noto-emoji-fonts
         - google-noto-sans-fonts
         - google-noto-serif-fonts
-        - google-noto-sans-cjk-fonts # think already in base-main
+        - google-noto-sans-cjk-fonts
         - fontawesome-fonts-all
         - liberation-fonts
 

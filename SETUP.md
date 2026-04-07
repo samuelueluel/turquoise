@@ -103,7 +103,6 @@ This script automates the core setup:
 - Deploys dotfiles via `chezmoi apply`.
 - Configures Vivaldi profiles and cleans up conflicting launchers.
 - Initializes Homebrew, installs `gcc` for the developer toolchain, and installs Gemini CLI natively.
-- Creates a **Distrobox** container (`dev-box`) for other isolated work.
 - Sets Zsh as the default shell.
 
 Log out and back in — this activates your new environment.
