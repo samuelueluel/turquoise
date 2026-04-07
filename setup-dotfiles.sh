@@ -97,13 +97,13 @@ brew install gcc make
 # Install gemini-cli
 brew install gemini-cli
 
+# Install claude-code
+brew install claude-code@latest
+
 # Install rtk and initialize hooks
 brew install rtk
 rtk init -g --yes || true
 rtk init -g --gemini --yes || true
-
-# Install claude-code
-brew install --cask claude-code # note this is the "stable" release in Homebrew; see claude-code latest
 
 # ── 6. Refresh desktop file MIME database ────────────────────────────────────
 update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
@@ -123,7 +123,7 @@ flatpak override --user --filesystem=xdg-data/themes:ro io.github.quodlibet.Quod
 echo ""
 echo "Done. If shell was changed, log out and back in for it to take effect."
 echo ""
-echo "Manual steps still needed:"
+echo "Manual steps may still be needed:"
 echo "  - Wallpapers — cp -r ~/system_config_git/Wallpapers ~/Pictures/Wallpapers"
 echo "  - Dropbox — sign in"
 echo "  - EasyEffects — presets are applied; open the app to confirm they loaded"
