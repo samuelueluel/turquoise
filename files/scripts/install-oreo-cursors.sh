@@ -6,7 +6,7 @@ REPO="milkmadedev/oreo-cursors-compiled"
 WORK_DIR="$(mktemp -d)"
 trap "rm -rf '$WORK_DIR'" EXIT
 
-dnf install -y git
+# git is a permanent package in the image (no install needed).
 
 git clone --depth=1 "https://github.com/$REPO.git" "$WORK_DIR/oreo-cursors"
 

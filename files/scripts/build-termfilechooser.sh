@@ -8,10 +8,7 @@ REPO_URL="https://github.com/hunkyburrito/xdg-desktop-portal-termfilechooser"
 BUILD_DIR="$(mktemp -d)"
 trap "rm -rf '$BUILD_DIR'" EXIT
 
-# Build-time dependencies
-dnf install -y --setopt=install_weak_deps=False \
-    meson ninja-build gcc \
-    inih-devel systemd-devel scdoc git
+# Build-time deps (meson, ninja-build, gcc, inih-devel, systemd-devel, scdoc) are pre-installed by the recipe's build-toolchain block.
 
 git clone --depth=1 "$REPO_URL" "$BUILD_DIR/src"
 cd "$BUILD_DIR/src"
@@ -31,6 +28,3 @@ env=TERMCMD=kitty --title 'File Picker'
 open_mode=suggested
 save_mode=suggested
 EOF
-
-# Remove build toolchain
-dnf remove -y meson ninja-build gcc inih-devel systemd-devel scdoc

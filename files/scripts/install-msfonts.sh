@@ -8,7 +8,7 @@ FONT_DIR="/usr/share/fonts/msttcore"
 WORK_DIR="$(mktemp -d)"
 trap "rm -rf '$WORK_DIR'" EXIT
 
-dnf install -y --setopt=install_weak_deps=False cabextract curl
+# Build-time deps (cabextract) are pre-installed by the recipe's build-toolchain block. curl is in base.
 
 mkdir -p "$FONT_DIR"
 cd "$WORK_DIR"

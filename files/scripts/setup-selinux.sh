@@ -31,7 +31,7 @@ if semodule -i "$WORK_DIR/niri_greetd.pp" 2>&1; then
 else
     echo "WARNING: semodule failed (expected in some container builds)."
     echo "Falling back to semanage permissive for xdm_t..."
-    dnf install -y policycoreutils-python-utils 2>&1 | tail -3
+    # policycoreutils-python-utils is pre-installed by the recipe's build-toolchain block.
     if semanage permissive -a xdm_t 2>&1; then
         echo "xdm_t set to permissive mode."
     else

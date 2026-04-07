@@ -10,12 +10,7 @@ REPO_URL="https://github.com/adelmonte/niri_window_buttons"
 BUILD_DIR="$(mktemp -d)"
 trap "rm -rf '$BUILD_DIR'" EXIT
 
-# Build-time dependencies
-dnf install -y --setopt=install_weak_deps=False \
-    cargo rust \
-    gtk3-devel \
-    glib2-devel \
-    git
+# Build-time deps (cargo, rust, gtk3-devel, glib2-devel) are pre-installed by the recipe's build-toolchain block.
 
 git clone --depth=1 --branch "v${VERSION}" "$REPO_URL" "$BUILD_DIR/src"
 
@@ -29,6 +24,3 @@ cargo build --release
 
 install -Dm755 target/release/libniri_window_buttons.so \
     /usr/lib/waybar/libniri_window_buttons.so
-
-# Remove build toolchain
-dnf remove -y cargo rust gtk3-devel glib2-devel

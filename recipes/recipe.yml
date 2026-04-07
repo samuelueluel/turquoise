@@ -148,7 +148,7 @@ modules:
         # hyprpicker: not in Fedora repos — add via script if needed
         - libappindicator-gtk3
         - copyq
-        - nirius # Niri IPC scripting tool, from Terra
+        # nirius: built from source via build-nirius.sh (Terra is behind upstream)
         - jq # JSON parsing for Waybar/Niri IPC scripts — think already in base-main
         - socat # IPC socket listener for Niri event-driven Waybar updates
         - pamixer # CLI volume control for Waybar scroll/click actions
@@ -438,6 +438,40 @@ modules:
           - org.kde.kweather
           - org.kde.skanpage
 
+  # ── Install build-time toolchain ─────────────────────────────────────────
+  # All build scripts assume these are pre-installed; cleaned up afterwards.
+  #   cargo, rust, rust-std-static, binutils, cpp  ← Rust builds (nirius, niri-window-buttons)
+  #   gtk3-devel, glib2-devel                      ← niri-window-buttons, nwg-look
+  #   meson, ninja-build, gcc                      ← termfilechooser
+  #   inih-devel, systemd-devel, scdoc             ← termfilechooser
+  #   golang + golang-bin/src/go-filesystem, make  ← nwg-look
+  #   cabextract                                   ← install-msfonts
+  #   policycoreutils-python-utils                 ← setup-selinux (semanage fallback)
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - cargo
+        - rust
+        - gtk3-devel
+        - glib2-devel
+        - meson
+        - ninja-build
+        - gcc
+        - inih-devel
+        - systemd-devel
+        - scdoc
+        - golang
+        - make
+        - cabextract
+        - policycoreutils-python-utils
+
+  # ── Build nirius from source ──────────────────────────────────────────────
+  # Terra is behind upstream; build directly from the tagged release tarball.
+  - type: script
+    scripts:
+      - build-nirius.sh
+
   # ── Build patched niri_window_buttons waybar module ──────────────────────
   # Patch centers icon in highlight box when show_window_titles=false.
   # Not packaged for Fedora; built from source (Rust).
@@ -474,23 +508,34 @@ modules:
     scripts:
       - install-msfonts.sh
 
-  # ── Clean up build-script toolchain residue ──────────────────────────────
-  # Build scripts remove their primary packages but dnf does not auto-remove
-  # orphaned deps. These were pulled in transitively and are not needed at runtime:
-  #   rust-std-static, binutils, cpp  ← deps of cargo/rust (build-niri-window-buttons.sh)
-  #   golang-bin, golang-src, go-filesystem, make  ← deps of golang (install-nwg-look.sh)
-  #   cabextract  ← installed by install-msfonts.sh, never removed
+  # ── Remove build-time toolchain ──────────────────────────────────────────
+  # Remove everything installed by the pre-build block above, plus transitive
+  # deps that dnf pulled in but won't auto-remove:
+  #   rust-std-static, binutils, cpp  ← orphaned deps of cargo/rust
+  #   golang-bin, golang-src, go-filesystem  ← orphaned deps of golang
   - type: dnf
     remove:
       packages:
+        - cargo
+        - rust
         - rust-std-static
         - binutils
         - cpp
+        - gtk3-devel
+        - glib2-devel
+        - meson
+        - ninja-build
+        - gcc
+        - inih-devel
+        - systemd-devel
+        - scdoc
+        - golang
         - golang-bin
         - golang-src
         - go-filesystem
         - make
         - cabextract
+        - policycoreutils-python-utils
 
   # ── Configure greetd + gtkgreet ───────────────────────────────────────────
   - type: script
