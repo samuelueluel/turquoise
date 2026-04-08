@@ -301,6 +301,16 @@ modules:
         - rsync # think already in base-main
         - fd-find
         - ripgrep
+        - bat # cat with syntax highlighting
+        - eza # ls replacement with colors/icons/git info
+        - atuin # shell history with SQLite backend and Ctrl+R search
+        - gh # GitHub CLI
+        - television # fuzzy finder TUI with live previews (from Terra)
+        - git-delta # syntax-highlighted git diff pager
+        - golang-github-jesseduffield-lazygit # TUI for git
+        - du-dust # du replacement with visual tree
+        - yq # jq-style processor for YAML/TOML/XML
+        - glow # Markdown renderer for the terminal
         - chezmoi # dotfile manager (replaces stow for this image)
         - smartmontools # think already in base-main
         - usbutils # think already in base-main
@@ -339,6 +349,13 @@ modules:
   - type: brew
     brew-analytics: false
     auto-upgrade: false
+    install:
+      - gcc        # isolated developer toolchain (not the system gcc)
+      - make
+      - gemini-cli
+      - claude-code@latest
+      - rtk        # post-install: rtk init runs in setup-dotfiles.sh
+      - ouch       # unified compress/decompress (not in Fedora/Terra repos)
 
   # ── Themes + appearance ────────────────────────────────────────────────────
   - type: dnf
