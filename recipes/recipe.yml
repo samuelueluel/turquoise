@@ -417,7 +417,7 @@ modules:
           - org.texstudio.TeXstudio # bundles TeXLive
           # Audio/media
           - com.github.wwmm.easyeffects
-          - org.pulseaudio.pavucontrol
+          - com.saivert.pwvucontrol
           - io.github.quodlibet.QuodLibet
           # Work/GIS
           - org.qgis.qgis//stable

@@ -116,9 +116,12 @@ if [[ "$SHELL" != "$ZSH_PATH" ]]; then
 fi
 
 # ── 8. Flatpak Overrides (Theme Access) ──────────────────────────────────────
-echo "Applying Flatpak overrides for Quod Libet theme access..."
+echo "Applying Flatpak overrides for Quod Libet and pwvucontrol theme access..."
+# gtk-3.0: Quod Libet needs access to gtk.css + noctalia.css for GTK3 theming
 flatpak override --user --filesystem=xdg-config/gtk-3.0:ro io.github.quodlibet.QuodLibet || true
-flatpak override --user --filesystem=xdg-data/themes:ro io.github.quodlibet.QuodLibet || true
+
+# gtk-4.0: pwvucontrol needs access to gtk.css + noctalia.css for libadwaita color overrides
+flatpak override --user --filesystem=xdg-config/gtk-4.0:ro com.saivert.pwvucontrol || true
 
 echo ""
 echo "Done. If shell was changed, log out and back in for it to take effect."
