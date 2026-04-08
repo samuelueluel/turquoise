@@ -87,10 +87,24 @@ sudo systemctl start brew-setup.service || true
 # Fix ownership of Homebrew
 sudo chown -R "$(whoami):$(id -g)" /home/linuxbrew
 
+echo "Installing Homebrew packages..."
 # Make sure brew is available in this subshell
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
-# Initialize rtk hooks (brew packages are baked into the image)
+# Install gcc and make for isolated developer toolchain
+brew install gcc make
+
+# Install gemini-cli
+brew install gemini-cli
+
+# Install claude-code
+brew install claude-code@latest
+
+# Install ouch (not in Fedora/Terra repos)
+brew install ouch
+
+# Install rtk and initialize hooks
+brew install rtk
 rtk init -g --yes || true
 rtk init -g --gemini --yes || true
 
