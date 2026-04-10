@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # First-run dotfiles setup for samuel-niri work laptop image.
-# Run once after first login: bash ~/work-image/setup-dotfiles.sh
+# Run once after first login: bash ~/samuel-niri/setup-dotfiles.sh
 #
 # Assumes: ~/dotfiles has been cloned (SSH key must be set up first).
-# Assumes: ~/work-image (this repo) has been cloned.
+# Assumes: ~/samuel-niri (this repo) has been cloned.
 
 set -euo pipefail
 
@@ -107,6 +107,14 @@ brew install ouch
 brew install rtk
 rtk init -g --yes || true
 rtk init -g --gemini --yes || true
+
+# Install bbrew (Bold Brew) — Homebrew TUI manager
+# Installed via binary release because the tap requires building from source,
+# which fails on atomic images without system-level compilers.
+BBREW_VERSION=$(curl -fsSL https://api.github.com/repos/Valkyrie00/bold-brew/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
+curl -L "https://github.com/Valkyrie00/bold-brew/releases/download/v${BBREW_VERSION}/bbrew_${BBREW_VERSION}_linux_amd64.tar.gz" \
+    | tar -xz -C /tmp \
+    && mv /tmp/bbrew "$(brew --prefix)/bin/bbrew"
 
 # ── 6. Refresh desktop file MIME database ────────────────────────────────────
 update-desktop-database ~/.local/share/applications/ 2>/dev/null || true

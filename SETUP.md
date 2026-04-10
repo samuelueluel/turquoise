@@ -1,194 +1,146 @@
 # First-Time Setup Guide
 
-Complete walkthrough from a fresh Fedora Silverblue install to a fully working samuel-niri system.
+Complete walkthrough from a fresh Fedora Silverblue install to a fully working **samuel-niri** system.
 
 !! If someone besides me ever reads this: obviously all this may not apply to you. !!
 
 ---
 
-## 0. Before you wipe current system — do this first
+## 1. Pre-Flight Checklist (Before You Wipe)
 
-Save your SSH keys to Bitwarden as secure notes:
+Save your SSH keys to Bitwarden as secure notes to ensure you can clone your private repositories on the new system.
 
 ```bash
-cat ~/.ssh/id_ed25519      # copy this → new Bitwarden secure note: "SSH Private Key"
-cat ~/.ssh/id_ed25519.pub  # copy this → new Bitwarden secure note: "SSH Public Key"
+cat ~/.ssh/id_ed25519      # Copy this → Bitwarden secure note: "SSH Private Key"
+cat ~/.ssh/id_ed25519.pub  # Copy this → Bitwarden secure note: "SSH Public Key"
 ```
 
-Include the full content including header/footer lines for the private key. You'll retrieve
-these from bitwarden.com on first boot using Vivaldi, which is already in the image.
+Include the full content, including header and footer lines for the private key. You'll retrieve these from bitwarden.com on first boot using Vivaldi, which is baked into the image.
 
 ---
 
-## 1. Install Fedora Silverblue
+## 2. OS Installation (Fedora Silverblue)
 
-During the Anaconda installer:
-- Choose **XFS** for the filesystem
-- Set username to **`samuel`** — the niri config has hardcoded `/home/samuel/` paths in keybinds and scripts
-- Connect to WiFi during install (the network profile carries over to the installed system)
+During the Fedora Silverblue installer (Anaconda):
+- **Filesystem:** Choose **XFS**.
+- **User Account:** Set username to **`samuel`** (crucial, as Niri/Chezmoi configs have hardcoded `/home/samuel/` paths).
+- **Network:** Connect to WiFi during install (the profile persists to the installed system).
 
 ---
 
-## 2. Rebase to the custom image
+## 3. Image Rebase
 
-After first boot into stock Silverblue GNOME, open a terminal and run:
+After the first boot into stock Silverblue GNOME, open a terminal and rebase to the custom image.
 
 ```bash
 rpm-ostree rebase ostree-unverified-registry:ghcr.io/samuelueluel/samuel-niri:latest
 systemctl reboot
 ```
 
-This pulls the full image (~3–5 GB). After reboot you land at **tuigreet → Niri**.
+This pulls the full image (~3–5 GB). After reboot, you will land at the **tuigreet** login screen, which starts **Niri**.
 
 ---
 
-## 3. First boot — before dotfiles
+## 4. Initial Environment Setup
 
-Niri starts with no config (built-in defaults only). Open a terminal:
+Niri starts with built-in defaults until dotfiles are applied.
+- **Terminal:** Press **`Super+T`** to open Alacritty.
+- **WiFi:** If not connected, run `nmtui`.
 
-- Default niri keybind: **`Super+T`** → opens Alacritty
-- Fallback: **`Ctrl+Alt+F2`** → TTY login
-
-Connect to WiFi if not already connected:
-
-```bash
-nmtui
-```
-
----
-
-## 4. SSH keys
-
-Open Vivaldi (it's already installed), log into bitwarden.com, and retrieve
-your SSH keys from the secure notes you saved in step 0.
+### Restore SSH Keys
+Open Vivaldi (already in the image), log into Bitwarden, and restore your keys:
 
 ```bash
 mkdir -p ~/.ssh && chmod 700 ~/.ssh
 
-# Paste private key content from Bitwarden (include the header/footer lines):
+# Paste private key content (include header/footer lines):
 nano ~/.ssh/id_ed25519
 chmod 600 ~/.ssh/id_ed25519
 
-# Paste public key content from Bitwarden (single line):
+# Paste public key content:
 nano ~/.ssh/id_ed25519.pub
 chmod 644 ~/.ssh/id_ed25519.pub
-```
 
-Test that GitHub recognizes the key before continuing:
-```bash
+# Verify connection
 ssh -T git@github.com
-# Expected: "Hi samuelueluel! You've successfully authenticated..."
 ```
 
 ---
 
-## 5. Clone repos
+## 5. Repository Cloning
+
+Clone the three core repositories that define the system.
 
 ```bash
+git clone git@github.com:samuelueluel/samuel-niri.git ~/samuel-niri
 git clone git@github.com:samuelueluel/dotfiles.git ~/dotfiles
-git clone git@github.com:samuelueluel/samuel-niri.git ~/work-image
 git clone git@github.com:samuelueluel/system_config_git.git ~/system_config_git
 ```
 
-`system_config_git` is needed for manual steps in step 8 (Vivaldi preferences and wallpapers).
-It is not used by chezmoi.
+---
+
+## 6. Automated Configuration
+
+Run the setup script to automate the bulk of the user-level configuration.
+
+```bash
+bash ~/samuel-niri/setup-dotfiles.sh
+```
+
+**What this script handles:**
+- **Dotfiles:** Deploys via `chezmoi apply`.
+- **Zsh:** Installs Powerlevel10k/fzf-tab and sets Zsh as the default shell.
+- **Vivaldi:** Configures Casual, Work, and LLM profiles with preferences from `system_config_git`.
+- **Dev Tools:** Installs Homebrew, GCC, Gemini CLI, Claude Code, `rtk`, and `bbrew`.
+- **Theming:** Applies Flatpak overrides for theme access.
+
+**Log out and back in** to activate the new shell and environment settings.
 
 ---
 
-## 6. Run dotfiles and dev setup
+## 7. Manual Polish & Authentication
 
+### Application Authentication
 ```bash
-bash ~/work-image/setup-dotfiles.sh
+claude   # browser-based login
+gemini   # browser OAuth
+dropbox start -i  # sign in via tray
 ```
 
-This script automates the core setup:
-- Deploys dotfiles via `chezmoi apply`.
-- Configures Vivaldi profiles and cleans up conflicting launchers.
-- Initializes Homebrew, installs `gcc` for the developer toolchain, and installs Gemini CLI natively.
-- Sets Zsh as the default shell.
+### Manual Config Restoration
+Some application data is too large or specific for Chezmoi/automation:
 
-Log out and back in — this activates your new environment.
+- **Wallpapers:**
+  ```bash
+  cp -r ~/system_config_git/Wallpapers ~/Pictures/Wallpapers
+  ```
+- **Okular (Flatpak):**
+  ```bash
+  # Launch once to create sandbox, then copy config
+  flatpak run org.kde.okular & sleep 2 && kill $!
+  mkdir -p ~/.var/app/org.kde.okular/config
+  cp ~/system_config_git/okular/.config/okularrc ~/.var/app/org.kde.okular/config/okularrc
+  ```
+- **EasyEffects:** Open the app to confirm presets (applied by Chezmoi) have loaded correctly.
 
 ---
 
-## 7. Authenticate Claude and Gemini
+## 8. System Reference: Noctalia Theme
 
-Because Claude and Gemini are now installed natively on the host via Homebrew, you can authenticate them normally:
+**Noctalia** is the custom system-wide color palette. It is applied per-application via Chezmoi-managed config files.
+
+| Component | Config Location |
+|---|---|
+| **GTK 3/4** | `~/.config/gtk-x.0/gtk.css` (imports `noctalia.css`) |
+| **Alacritty** | `~/.config/alacritty/themes/noctalia.toml` |
+| **Kitty** | `~/.config/kitty/kitty.conf` |
+| **Zed** | `~/.config/zed/themes/noctalia.json` |
+| **Qt 5/6** | `~/.config/qtXct/colors/noctalia.conf` |
+| **Claude Code** | Uses `dark-ansi` (inherits terminal palette) |
+| **Gemini CLI** | Hand-crafted `AlacrittyCompatible` theme |
+
+**Flatpaks:** If a new GTK Flatpak is added, it needs permission to read the theme files:
 ```bash
-claude   # browser-based login on first run
-gemini   # browser OAuth on first run
+flatpak override --user --filesystem=xdg-config/gtk-3.0:ro <app-id>
 ```
-
----
-
-## 8. Remaining manual steps
-
-**Dropbox** — sign in via tray icon or:
-```bash
-dropbox start -i
-```
-
-**Vivaldi** — The `setup-dotfiles.sh` script automatically copies your preferences and context menus for the Casual, Work, and LLMs profiles from your `system_config_git` repository. 
-
-**Important Note for Vivaldi RPM on Wayland:** Vivaldi may auto-generate its own `.desktop` files (e.g., `com.vivaldi.Vivaldi.Casual.desktop`) when profiles are launched. These default files lack the necessary Wayland flags (`--ozone-platform-hint=wayland`) and their filenames do not match the exact Niri/Waybar `app-id` window class. If Waybar icons stop working or Vivaldi hangs, ensure you delete the auto-generated ones: `rm ~/.local/share/applications/com.vivaldi.Vivaldi.*.desktop`. The correct ones applied by `chezmoi` are named exactly after their app-ids (e.g., `VivaldiCasual.desktop`).
-
-**Extensions** install normally through the Chrome Web Store — they live in their respective `~/.config/vivaldi-*/Default/`
-(mutable home dir) and survive reboots and image updates.
-
-**Wallpapers** *(Requires `~/system_config_git` — see step 5.)*
-```bash
-cp -r ~/system_config_git/Wallpapers ~/Pictures/Wallpapers
-```
-
-**EasyEffects** — presets are applied by chezmoi; open the app to confirm they loaded.
-
-**Okular (and other Flatpaks)** — Because many apps are now Flatpaks, their config files do not go in `~/.config/`. They must go in `~/.var/app/<app-id>/config/`.
-*(Requires `~/system_config_git` — see step 5.)*
-
-```bash
-# Launch Okular once to generate its sandbox directory
-flatpak run org.kde.okular & sleep 2 && kill $!
-
-# Copy your custom Okular config into the Flatpak sandbox
-mkdir -p ~/.var/app/org.kde.okular/config
-cp ~/system_config_git/okular/.config/okularrc ~/.var/app/org.kde.okular/config/okularrc
-```
-
-**Other** - check the `system_config_git` folder for any other settings not auto-applied. Remember: if the app is a Flatpak, its configs belong in `~/.var/app/`, not `~/.config/`.
-
----
-
-## Color Theme (Noctalia)
-
-**Noctalia** is the name for the custom system-wide color palette. It is applied per-application — each toolkit has its own config file. The palette files are static (hand-maintained), not generated by any tool.
-
-| App / toolkit | Config location | How managed |
-|---|---|---|
-| GTK3 apps | `~/.config/gtk-3.0/gtk.css` + `noctalia.css` | chezmoi |
-| GTK4 / libadwaita apps | `~/.config/gtk-4.0/gtk.css` + `noctalia.css` | chezmoi |
-| Alacritty | `~/.config/alacritty/themes/noctalia.toml` | chezmoi |
-| Kitty | `~/.config/kitty/kitty.conf` | chezmoi |
-| Zed | `~/.config/zed/themes/noctalia.json` | chezmoi |
-| Qt5 apps | `~/.config/qt5ct/colors/noctalia.conf` | chezmoi |
-| Qt6 apps | `~/.config/qt6ct/colors/noctalia.conf` | chezmoi |
-
-**GTK theming works as follows:** `gtk.css` imports `noctalia.css` from the same directory, which defines the color variables that GTK reads. There is no separate "theme" directory involved — the files in `~/.config/gtk-3.0/` and `~/.config/gtk-4.0/` are sufficient.
-
-**Flatpak apps** need explicit filesystem access to read those config dirs. `setup-dotfiles.sh` grants the necessary overrides:
-- Quod Libet: `xdg-config/gtk-3.0:ro`
-- pwvucontrol: `xdg-config/gtk-4.0:ro`
-
-If you add a new GTK Flatpak app and theming doesn't apply, run:
-```bash
-flatpak override --user --filesystem=xdg-config/gtk-3.0:ro <app-id>   # GTK3
-flatpak override --user --filesystem=xdg-config/gtk-4.0:ro <app-id>   # GTK4
-```
-Then add it to the Flatpak Overrides section of `setup-dotfiles.sh`.
-
-**Claude Code** uses the `dark-ansi` theme, which reads the terminal's ANSI color palette at runtime rather than defining its own colors. Because Alacritty's ANSI palette is Noctalia, Claude Code automatically inherits it — no extra configuration needed. The `dark-ansi` preference is persisted in `~/.claude.json`.
-
-**Gemini CLI** does not inherit ANSI colors, so it has a hand-crafted theme called `AlacrittyCompatible` defined in `~/.gemini/settings.json`. The colors in that theme are manually matched to Noctalia's Alacritty palette. That file is tracked in `system_config_git/gemini-cli/`.
-
-If you ever re-select a theme in Claude Code, run `/theme` and pick `dark-ansi`. For Gemini CLI, the theme is already set in `~/.gemini/settings.json` and requires no action.
-
----
+Once verified, add the override to `setup-dotfiles.sh`.
