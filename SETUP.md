@@ -91,7 +91,7 @@ bash ~/samuel-niri/setup-dotfiles.sh
 - **Dotfiles:** Deploys via `chezmoi apply`.
 - **Zsh:** Installs Powerlevel10k/fzf-tab and sets Zsh as the default shell.
 - **Zen Browser:** Creates Personal, Utility, and Work profiles and restores settings from `system_config_git/zen/`.
-- **Dev Tools:** Installs Homebrew, GCC, Gemini CLI, Claude Code, `rtk`, and `bbrew`.
+- **Dev Tools:** Installs Homebrew packages from `~/.Brewfile` (CLI tools: bat, eza, ripgrep, lazygit, etc.), plus GCC, Gemini CLI, Claude Code, `rtk`, and `bbrew`.
 - **Theming:** Applies Flatpak overrides for theme access.
 
 **Log out and back in** to activate the new shell and environment settings.

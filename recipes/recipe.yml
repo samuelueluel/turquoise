@@ -177,7 +177,7 @@ modules:
         - zsh-syntax-highlighting
         - bash-completion # think already in base-main
         - fzf # think already in base-main
-        - zoxide
+        # zoxide → homebrew: zoxide
         - nano # think already in base-main
         # nano-syntax-highlighting: not in Fedora repos
         - less # think already in base-main
@@ -280,7 +280,7 @@ modules:
       packages:
         - mpv
         - swayimg # Wayland image viewer
-        - yt-dlp
+        # yt-dlp → homebrew: yt-dlp
         - ffmpeg # think already in base-main
         - gstreamer1-plugin-libav # think already in base-main
         - gstreamer1-vaapi
@@ -299,19 +299,20 @@ modules:
       packages:
         - git
         - rsync # think already in base-main
-        - fd-find
-        - ripgrep
-        - bat # cat with syntax highlighting
-        - eza # ls replacement with colors/icons/git info
-        - atuin # shell history with SQLite backend and Ctrl+R search
-        - gh # GitHub CLI
-        - television # fuzzy finder TUI with live previews (from Terra)
-        - git-delta # syntax-highlighted git diff pager
-        - golang-github-jesseduffield-lazygit # TUI for git
-        - du-dust # du replacement with visual tree
-        - yq # jq-style processor for YAML/TOML/XML
-        - glow # Markdown renderer for the terminal
-        - chezmoi # dotfile manager (replaces stow for this image)
+        # fd-find → homebrew: fd
+        # ripgrep → homebrew: ripgrep
+        # bat → homebrew: bat
+        # eza → homebrew: eza
+        # atuin → homebrew: atuin
+        # gh → homebrew: gh
+        # television → homebrew: television
+        # git-delta → homebrew: git-delta
+        # golang-github-jesseduffield-lazygit → homebrew: lazygit
+        # du-dust → homebrew: dust
+        # yq → homebrew: yq
+        # glow → homebrew: glow
+        # zoxide → homebrew: zoxide
+        - chezmoi # dotfile manager — must be in image to bootstrap dotfiles before brew
         - smartmontools # think already in base-main
         - usbutils # think already in base-main
         - inxi
@@ -327,10 +328,10 @@ modules:
         - hostname # think already in base-main
         - inotify-tools
         - plocate
-        - fastfetch
-        - duf
-        - glances
-        - tldr
+        # fastfetch → homebrew: fastfetch
+        # duf → homebrew: duf
+        # glances → homebrew: glances
+        # tldr → homebrew: tldr
         - man-db # think already in base-main
         - hwinfo
         # gnome-keyring (from base-main) handles org.freedesktop.secrets for browser password storage

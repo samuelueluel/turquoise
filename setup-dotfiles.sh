@@ -125,17 +125,12 @@ echo "Installing Homebrew packages..."
 # Make sure brew is available in this subshell
 eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
 
+# Install CLI tools from ~/.Brewfile (created by chezmoi apply above)
+brew bundle --global
+
 # Install gcc and make for isolated developer toolchain
 brew install gcc make
 
-# Install gemini-cli
-brew install gemini-cli
-
-# Install claude-code
-brew install claude-code@latest
-
-# Install ouch (not in Fedora/Terra repos)
-brew install ouch
 
 # Install rtk and initialize hooks
 brew install rtk
