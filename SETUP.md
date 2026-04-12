@@ -46,6 +46,7 @@ This pulls the full image (~3–5 GB). After reboot, you will land at the **tuig
 Niri starts with built-in defaults until dotfiles are applied.
 - **Terminal:** Press **`Super+T`** to open Alacritty.
 - **WiFi:** If not connected, run `nmtui`.
+- **File browsing:** Use **Nemo** for any file browsing at this stage. Yazi depends on Homebrew CLI tools (`fd`, `rg`, `bat`, `eza`) that aren't available until step 6, so search and previews won't work correctly beforehand.
 
 ### Restore SSH Keys
 Open Zen Browser (already in the image), log into Bitwarden, and restore your keys:
