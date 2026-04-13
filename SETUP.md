@@ -95,7 +95,7 @@ bash ~/samuel-niri/setup-dotfiles.sh
 - **Dev Tools:** Installs Homebrew packages from `~/.Brewfile` (CLI tools: bat, eza, ripgrep, lazygit, etc.), plus GCC, Gemini CLI, Claude Code, `rtk`, and `bbrew`.
 - **Theming:** Applies Flatpak overrides for theme access.
 
-**Log out and back in** to activate the new shell and environment settings.
+**Log out and back in** to activate the new shell and environment settings. This is required for Homebrew to be injected into the systemd user session PATH. Note that Yazi search (`fd`, `rg`, fzf plugins) relies on Homebrew tools; to ensure these are always available regardless of how it's launched, the Niri keybinds wrap Yazi in a shell command (`zsh -c 'exec yazi'`).
 
 ---
 
