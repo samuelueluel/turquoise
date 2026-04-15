@@ -111,6 +111,9 @@ modules:
   # already has the same or older version installed.
   # Secure Boot validation must be disabled in BIOS (verified disabled).
   - type: dnf
+    repos:
+      copr:
+        - "@kernel-vanilla/stable"
     replace:
       - from-repo: copr:copr.fedorainfracloud.org:group_kernel-vanilla:stable
         packages:
