@@ -105,13 +105,13 @@ modules:
       packages:
         - rpmfusion-free-release-tainted # enables free-tainted subrepo (libdvdcss is here)
 
-  # ── Mainline kernel (kernel-vanilla/mainline) ────────────────────────────
-  # Replaces the UBlue base kernel with latest Linux mainline snapshots.
+  # ── Stable kernel (kernel-vanilla/stable) ────────────────────────────────
+  # Replaces the UBlue base kernel with latest upstream stable release.
   # Secure Boot validation must be disabled in BIOS (verified disabled).
   - type: dnf
     repos:
       copr:
-        - "@kernel-vanilla/mainline"
+        - "@kernel-vanilla/stable"
     install:
       install-weak-deps: false
       packages:
