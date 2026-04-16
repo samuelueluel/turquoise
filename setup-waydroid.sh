@@ -20,7 +20,10 @@ fi
 
 # ── 2. Initialize with GAPPS ──────────────────────────────────────────────────
 echo "==> Initializing Waydroid with GAPPS (downloads ~1 GB)..."
-sudo waydroid init -s GAPPS -f
+sudo waydroid init \
+    -c https://ota.waydro.id/system \
+    -v https://ota.waydro.id/vendor \
+    -s GAPPS -f
 
 # ── 3. Install ARM translation (libndk) ──────────────────────────────────────
 # Install before first container start so the image is patched from the outset.
@@ -29,8 +32,14 @@ echo "==> Installing libndk ARM translation via waydroid-script..."
 TMPDIR="$(mktemp -d)"
 trap 'rm -rf "$TMPDIR"' EXIT
 
-git clone --depth=1 https://github.com/casualsnek/waydroid-script "$TMPDIR/waydroid-script"
-sudo python3 "$TMPDIR/waydroid-script/main.py" install libndk
+curl -fsSL https://github.com/casualsnek/waydroid_script/archive/refs/heads/main.tar.gz \
+    -o "$TMPDIR/waydroid_script.tar.gz"
+tar -xz -C "$TMPDIR" -f "$TMPDIR/waydroid_script.tar.gz"
+python3 -m venv "$TMPDIR/waydroid_script-main/venv"
+"$TMPDIR/waydroid_script-main/venv/bin/pip" install --quiet \
+    -r "$TMPDIR/waydroid_script-main/requirements.txt"
+sudo "$TMPDIR/waydroid_script-main/venv/bin/python3" \
+    "$TMPDIR/waydroid_script-main/main.py" install libndk
 
 # ── 4. Start container service ────────────────────────────────────────────────
 echo "==> Starting waydroid-container.service..."
