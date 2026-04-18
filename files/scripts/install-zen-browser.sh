@@ -10,7 +10,7 @@ URL="https://github.com/zen-browser/desktop/releases/latest/download/zen.linux-x
 # Download and extract to /tmp
 cd /tmp
 echo "Downloading $URL..."
-curl -sL "$URL" -o zen.tar.xz
+curl -fsSL --retry 3 --retry-delay 5 "$URL" -o zen.tar.xz
 
 echo "Extracting..."
 tar -xf zen.tar.xz
