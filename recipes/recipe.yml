@@ -128,6 +128,7 @@ modules:
       copr:
         - yalter/niri # niri compositor
         - che/zed # Zed editor
+        - ublue-os/packages # uupd unified updater
       files:
         - https://github.com/terrapkg/subatomic-repos/raw/main/terra.repo
         # dropbox.repo is baked in via the files module (avoids CI network block)
@@ -137,6 +138,7 @@ modules:
         - niri
         - zed
         - dropbox
+        - uupd
 
   # ── Wayland compositor stack ──────────────────────────────────────────────
   - type: dnf
@@ -607,12 +609,19 @@ modules:
         - avahi-daemon.service
         - cups.service
         - fstrim.timer
+        - uupd.timer
       disabled:
         - gdm.service
         - sddm.service
+        - flatpak-system-update.timer
+        - brew-update.timer
+        - rpm-ostreed-automatic.timer
     user:
       enabled:
         # dropbox.service: Dropbox RPM doesn't ship a systemd unit; use XDG autostart instead
         - pipewire.service
         - pipewire-pulse.service
         - wireplumber.service
+      disabled:
+        - distrobox-upgrade.timer
+        - flatpak-user-update.timer
