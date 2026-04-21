@@ -305,7 +305,7 @@ gestures {
 // ============================================================
 
 // ── Bar + notifications ───────────────────────────────────────────────────
-spawn-at-startup "sh" "-c" "swaybg -i $HOME/Pictures/Wallpapers/joonyeop-baek-GK6qXiHm6Iw-unsplash.jpg -m fill"
+spawn-at-startup "swaybg" "-i" "/usr/share/samuel-niri/wallpapers/joonyeop-baek-GK6qXiHm6Iw-unsplash.jpg" "-m" "fill"
 spawn-at-startup "waybar"
 spawn-at-startup "swaync"
 

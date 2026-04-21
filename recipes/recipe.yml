@@ -320,7 +320,8 @@ modules:
       packages:
         - git
         - rsync # think already in base-main
-        # fd-find → homebrew: fd
+        - fd-find # fallback for yazi search; homebrew fd takes precedence if installed
+        - fzf # fallback for yazi search; homebrew fzf takes precedence if installed
         # ripgrep → homebrew: ripgrep
         # bat → homebrew: bat
         # eza → homebrew: eza

@@ -1,5 +1,5 @@
 {
-  "include": ["~/.config/waybar/config.jsonc"],
+  "include": ["/etc/xdg/waybar/config.jsonc"],
   "modules-right": [
     "tray",
     "custom/swaync",
