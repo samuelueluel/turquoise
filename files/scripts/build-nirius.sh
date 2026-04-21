@@ -5,6 +5,7 @@ set -euo pipefail
 
 VERSION=$(git ls-remote --tags https://git.sr.ht/~tsdh/nirius \
   | grep 'refs/tags/nirius-[0-9]' \
+  | grep -v '\^{}' \
   | sed 's|.*refs/tags/nirius-||' \
   | sort -V | tail -1)
 TARBALL_URL="https://git.sr.ht/~tsdh/nirius/archive/nirius-${VERSION}.tar.gz"
