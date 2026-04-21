@@ -260,7 +260,7 @@ modules:
         - fwupd # think already in base-main
         - fprintd # fingerprint daemon
         - fprintd-pam # provides pam_fprintd.so; satisfies PAM fingerprint stack
-        - keyd
+        # keyd: not in Fedora repos; built from source via build-keyd.sh
         - playerctl # think already in base-main
         - ModemManager # think already in base-main
         - mesa-vulkan-drivers # includes AMD Radeon Vulkan (ThinkPad P14s) — think already in base-main
@@ -540,6 +540,12 @@ modules:
   - type: script
     scripts:
       - install-cliphist.sh
+
+  # ── Build keyd from source ────────────────────────────────────────────────
+  # Not in Fedora repos; was in Terra which has recurring GPG issues
+  - type: script
+    scripts:
+      - build-keyd.sh
 
   # ── Build xdg-desktop-portal-termfilechooser ──────────────────────────────
   # Yazi file picker portal; not packaged for Fedora, built from source (Rust)
