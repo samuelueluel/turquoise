@@ -441,7 +441,7 @@ modules:
         install:
           # Browsers
           # KDE style extensions
-          - org.kde.KStyle.Kvantum
+          - org.kde.KStyle.Kvantum//6.9
           # Productivity
           - md.obsidian.Obsidian
           - com.bitwarden.desktop

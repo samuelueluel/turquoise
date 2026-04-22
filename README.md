@@ -31,7 +31,7 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 ### 2. Rebase to this image
 
 ```bash
-bootc switch ghcr.io/samuelueluel/samuel-niri:latest
+sudo bootc switch ghcr.io/samuelueluel/samuel-niri:latest
 systemctl reboot
 ```
 
