@@ -75,14 +75,16 @@ zen:
     done
 
     declare -A ICONS=( ["personal"]="a7xpg" ["utility"]="braindump" ["work"]="applications-office" )
+    declare -A NAMES=( ["personal"]="Personal" ["utility"]="Utility" ["work"]="Work" )
     for profile in personal utility work; do
-        NAME="Zen (${profile^})"
+        CAP="${NAMES[$profile]}"
+        NAME="Zen ($CAP)"
         ICON="${ICONS[$profile]}"
         FILE="{{HOME}}/.local/share/applications/zen-${profile}.desktop"
         cat > "$FILE" <<EOF
 [Desktop Entry]
 Name=$NAME
-Comment=Launch Zen Browser with the ${profile^} profile
+Comment=Launch Zen Browser with the $CAP profile
 Exec=env MOZ_APP_REMOTINGNAME=zen-$profile zen-browser --profile "{{ZEN_DIR}}/zen.$profile" %u
 Icon=$ICON
 Terminal=false
