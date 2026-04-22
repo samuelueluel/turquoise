@@ -35,11 +35,11 @@ sudo bootc switch ghcr.io/samuelueluel/samuel-niri:latest
 systemctl reboot
 ```
 
-After reboot you land at the gtkgreet login screen. Press **Super+\`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` if WiFi needs configuring.
+After getting through the gtkgreet login screen, press **Super+\`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` if WiFi needs configuring.
 
-> **CapsLock** is rebound to Super. The physical Super key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else.
+> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else.
 
-### 3. Run sjust setup
+### 3. Run sjust
 
 All initial user-level configuration is handled by `sjust`, a wrapper for `just`. All configuration files and scripts it applies are included in the image.
 
