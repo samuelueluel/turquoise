@@ -15,6 +15,7 @@ Personal atomic Fedora image built with [BlueBuild](https://github.com/blue-buil
 - **Kernel:** `@kernel-vanilla/stable` upstream stable
 - **Homebrew** framework pre-installed for user CLI tools
 - **Flatpaks:** Things I use
+- **System updates:** Everything on the system updates daily through `uupd`, available upon reboot
 
 System-wide default configs for niri, waybar, and fuzzel are baked in as fallbacks, active until user dotfiles are applied.
 
@@ -55,9 +56,13 @@ will display
 | `sjust zsh-plugins` | Clones Powerlevel10k and fzf-tab |
 | `sjust zen` | Creates Zen Browser profiles, restores settings and themes, generates launchers |
 | `sjust claude-gemini` | Restores Claude Code and Gemini CLI settings |
-| `sjust brew` | Fixes Homebrew, runs `brew bundle`, installs rtk and bbrew |
+| `sjust brew` | Fixes Homebrew and runs `brew bundle`, installing common CLI tools |
 | `sjust flatpaks` | Applies Flatpak permission overrides for GTK theming |
 | `sjust system` | Adds user to libvirt group, sets Zsh as default shell |
 | `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
+
+## AI Disclaimer
+
+I am not a software developer. Much of this code was written by Claude or ripped from other projects, but I repeat myself.
