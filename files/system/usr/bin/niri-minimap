@@ -580,7 +580,7 @@ class MinimapApp(Gtk.Application):
     def _reset_autohide_timer(self):
         if self._autohide_timer_id is not None:
             GLib.source_remove(self._autohide_timer_id)
-        self._autohide_timer_id = GLib.timeout_add(1100, self._autohide_cb)
+        self._autohide_timer_id = GLib.timeout_add(550, self._autohide_cb)
 
     def _autohide_cb(self):
         self._autohide_timer_id = None

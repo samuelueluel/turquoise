@@ -139,3 +139,20 @@ system:
     groups "$(whoami)" | grep -q '\blibvirt\b' || sudo usermod -aG libvirt "$(whoami)"
     ZSH_PATH="$(command -v zsh)"
     [[ "$SHELL" == "$ZSH_PATH" ]] || sudo usermod -s "$ZSH_PATH" "$(whoami)"
+
+# Replace default zRAM with a 16GB swap file on /var
+swap:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if swapon --show | grep -q '/var/swapfile'; then
+        echo "Swap file already active, nothing to do."
+        exit 0
+    fi
+    sudo touch /etc/systemd/zram-generator.conf
+    sudo swapoff /dev/zram0 2>/dev/null || true
+    sudo fallocate -l 16G /var/swapfile
+    sudo chmod 600 /var/swapfile
+    sudo mkswap /var/swapfile
+    sudo swapon /var/swapfile
+    grep -q '/var/swapfile' /etc/fstab || echo '/var/swapfile none swap defaults 0 0' | sudo tee -a /etc/fstab
+    swapon --show

@@ -1,24 +1,61 @@
-Personal atomic image built with [BlueBuild](https://github.com/blue-build/) and based on the [Universal Blue main image](https://github.com/ublue-os/main/pkgs/container/base-main). Uses the [niri compositor](https://github.com/niri-wm/niri). Opinionated. Work in progress---packages may be added or removed. Not compatible with secure boot. Use at your own risk, especially if you have an NVIDIA GPU. 
+Personal atomic Fedora image built with [BlueBuild](https://github.com/blue-build/) on top of [Universal Blue's base-main](https://github.com/ublue-os/main/pkgs/container/base-main). Uses the [niri](https://github.com/niri-wm/niri) scrolling Wayland compositor.
 
-If you are looking for a Universal Blue-type image using niri, it would be much easier to use [Wayblue](https://github.com/wayblueorg/wayblue), [Zirconium](https://github.com/zirconium-dev/zirconium), or [TunaOS](https://github.com/tuna-os/tunaOS).
+> **Not intended for general use.** This is a personal daily-driver image — opinionated, occasionally broken during transitions, and not compatible with Secure Boot. If you want a niri-based Universal Blue image, see [Wayblue](https://github.com/wayblueorg/wayblue), [Zirconium](https://github.com/zirconium-dev/zirconium), or [TunaOS](https://github.com/tuna-os/tunaOS) instead.
 
-Some but not all of my personal configuration/dotfiles are applied as system-wide defaults as a fallback for when user account config files are absent: niri, waybar, and fuzzel. I would suggest to test this image in a VM to familiarize yourself with the (perhaps idiosyncratic) custom keybinds before installing. However, some systems have issues with displaying niri in a VM. It has always given me errors and a black screen. Therefore, I would not try out this image unless you are already committed to installing or have already installed a Fedora Atomic / Universal Blue distrobution. In that case you can simply swap back to your old image if you don't like it or it breaks. You should figure out what that involves. If it were me, I would create a separate user account just for testing the new image to prevent any config file shenanigans. Expect to have to solve some user permission issues.
+## What's in the image
 
-One option is to install Fedora Silverblue, disable secure boot through UEFI, and then rebase to this image with
+- **Compositor:** Niri (from [yalter/niri](https://copr.fedorainfracloud.org/coprs/yalter/niri/) COPR)
+- **Bar:** Waybar with custom Niri IPC modules
+- **Terminals:** Alacritty (primary), Kitty (for Yazi previews)
+- **Editor:** Zed
+- **Browsers:** Zen Browser (3 profiles: personal/utility/work), Helium
+- **Shell:** Zsh + Powerlevel10k + fzf-tab
+- **File manager:** Yazi (in Kitty), Nemo (backup)
+- **Display manager:** greetd + gtkgreet
+- **Kernel:** `@kernel-vanilla/stable` upstream stable
+- **Homebrew** framework pre-installed for user CLI tools
+- **Flatpaks:** Obsidian, Bitwarden, LibreOffice, EasyEffects, Quod Libet, QGIS, and others
+
+System-wide default configs for niri, waybar, and fuzzel are baked in as fallbacks, active until user dotfiles are applied.
+
+## Fresh install
+
+### 1. Install Fedora Silverblue
+
+- Filesystem: **XFS**
+- Disable Secure Boot in BIOS (required — the vanilla kernel cannot be signed)
+
+### 2. Rebase to this image
 
 ```bash
-sudo bootc switch ghcr.io/samuelueluel/samuel-niri:latest
+bootc switch ghcr.io/samuelueluel/samuel-niri:latest
 systemctl reboot
 ```
 
-Note that CapsLock has been rebound to the Super/Mod/Start key and the physical Super/Mod/Start key has been rebound to Menu. The latter is recognized by niri as XF86MenuKB in the config file. Mod+/ brings up the keybind dashboard---you must read this closely or things will be unusable. I suggest you run
+After reboot you land at the gtkgreet login screen. Press **Super+`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` if WiFi needs configuring.
+
+> **CapsLock** is rebound to Super. The physical Super key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else.
+
+### 3. Run sjust setup
+
+All user-level configuration is handled by `sjust`, a setup command runner baked into the image. No repo cloning or SSH keys required to get a working system.
 
 ```bash
-cp -r /etc/niri/ ~/.config/niri/
+sjust setup
 ```
 
-so that you can edit the keybinds to your liking at the copy destination. SETUP.md, setup-dotfiles.sh, and setup-waydroid.sh require access to private repos and should not be used. They are for my own use and reference.
+This runs the following steps in order — each can also be run individually:
 
-The system updates in the background every night on a timer like other Universal Blue images. 
+| Recipe | What it does |
+|---|---|
+| `sjust dirs` | Pre-creates `~/.ssh`, `~/.claude`, `~/.config`, etc. |
+| `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi |
+| `sjust zsh-plugins` | Clones Powerlevel10k and fzf-tab |
+| `sjust zen` | Creates Zen Browser profiles, restores settings and themes, generates launchers |
+| `sjust claude-gemini` | Restores Claude Code and Gemini CLI settings |
+| `sjust brew` | Fixes Homebrew, runs `brew bundle`, installs rtk and bbrew |
+| `sjust flatpaks` | Applies Flatpak permission overrides for GTK theming |
+| `sjust system` | Adds user to libvirt group, sets Zsh as default shell |
+| `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 
-Much of this is written by Claude Code. However, I run this on my work and personal laptop, so I view it as stable. Things may need fixing upon new releases of Fedora and niri. I will try to fix them and keep this repo up to date. Feel free to file an issue here if you have a question or if something goes wrong. Use at your own risk, though.
+Log out and back in after setup to activate the new shell and Homebrew PATH.
