@@ -41,7 +41,7 @@ After reboot you land at the gtkgreet login screen. Press **Super+\`** to open a
 
 ### 3. Run sjust setup
 
-All initial user-level configuration is handled by `sjust`, a wrapper for `just`. All configuration files and scripts it applies is included in the image. `sjust` will display:
+All initial user-level configuration is handled by `sjust`, a wrapper for `just`. All configuration files and scripts it applies is included in the image.
 
 | Recipe | What it does |
 |---|---|
