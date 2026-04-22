@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Start-up Apps
+Comment=Launch Zen Personal, Helium, Quod Libet, and Alacritty
+Exec=/var/home/samuel/.local/bin/launch_apps.sh
+Icon=utilities-terminal
+Terminal=false
+Type=Application
+Categories=Utility;

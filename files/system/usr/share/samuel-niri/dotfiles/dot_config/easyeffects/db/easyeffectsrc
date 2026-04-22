@@ -1,0 +1,28 @@
+[NativePluginWindow]
+showNativePluginUi=true
+
+[Presets]
+lastLoadedOutputPreset=AP3 Towards JM1ish
+
+[Spectrum]
+logarithimicHorizontalAxis=false
+
+[StreamInputs]
+inputDevice=alsa_input.pci-0000_07_00.6.HiFi__Mic1__source
+
+[StreamOutputs]
+mostUsedPresets=AP3 Test2,AP3 Towards JM1ish,AP3 Fix2,AP3 Lumen SR,-5\s
+outputDevice=bluez_output.BC_80_4E_7D_DF_D1.1
+plugins=equalizer#0
+usedPresets=AP3 Test2:27,AP3 Fix2:14,AP3 Lumen SR:11,AP3 Towards JM1ish:23,-5 :6,AP3 asmr:1
+visiblePage=pluginsPage
+visiblePlugin=equalizer#0
+
+[Style]
+forceBreezeTheme=false
+
+[Window]
+autostartOnLogin=true
+height=685
+showTrayIcon=false
+width=964

@@ -1,0 +1,135 @@
+#!/usr/bin/env python3
+"""Switch the active niri window open/close shader and reload the config."""
+
+import os
+import re
+import sys
+
+SHADERS_DIR = os.path.expanduser("~/.config/niri/shaders")
+CONFIG_PATH = os.path.expanduser("~/.config/niri/config.kdl")
+
+SHADER_CONFIGS = {
+    "circle":   {"duration": 750,  "curve": "ease-out-cubic"},
+    "dissolve": {"duration": 1000, "curve": "ease-out-cubic"},
+    "fade":     {"duration": 750,  "curve": "ease-out-cubic"},
+    "glitch":   {"duration": 750,  "curve": "ease-out-cubic"},
+    "pixelate": {"duration": 750,  "curve": "ease-out-cubic"},
+    "ripple":   {"duration": 750,  "curve": "ease-out-cubic"},
+    "smoke":    {"duration": 750,  "curve": "ease-out-cubic"},
+    "snap":     {"duration": 750,  "curve": "ease-out-cubic"},
+}
+
+def available_shaders():
+    if not os.path.isdir(SHADERS_DIR):
+        return []
+    return sorted(
+        d for d in os.listdir(SHADERS_DIR)
+        if os.path.isdir(os.path.join(SHADERS_DIR, d))
+    )
+
+def read_shader(name, kind):
+    path = os.path.join(SHADERS_DIR, name, f"{kind}.glsl")
+    with open(path) as f:
+        return f.read().strip()
+
+def indent_block(src, spaces):
+    pad = " " * spaces
+    return "\n".join(pad + line if line.strip() else "" for line in src.splitlines())
+
+def build_animations_block(shader_name):
+    cfg = SHADER_CONFIGS.get(shader_name, {"duration": 750, "curve": "ease-out-cubic"})
+    open_src  = indent_block(read_shader(shader_name, "open"),  12)
+    close_src = indent_block(read_shader(shader_name, "close"), 12)
+
+    return (
+        f'animations {{\n'
+        f'    // off\n'
+        f'\n'
+        f'    slowdown 1 // Slow down all animations by this factor. Values below 1 speed them up instead.\n'
+        f'\n'
+        f'    // Active shader: {shader_name}  (switch with: niri-shader <name>)\n'
+        f'    window-open {{\n'
+        f'        duration-ms {cfg["duration"]}\n'
+        f'        curve "{cfg["curve"]}"\n'
+        f'        custom-shader r"\n'
+        f'{open_src}\n'
+        f'        "\n'
+        f'    }}\n'
+        f'    window-close {{\n'
+        f'        duration-ms {cfg["duration"]}\n'
+        f'        curve "{cfg["curve"]}"\n'
+        f'        custom-shader r"\n'
+        f'{close_src}\n'
+        f'        "\n'
+        f'    }}\n'
+        f'}}'
+    )
+
+def replace_animations_block(content, new_block):
+    # Find the start of the animations { block
+    pattern = re.compile(r'\nanimations \{')
+    match = pattern.search(content)
+    if not match:
+        # Try without leading newline (start of file edge case)
+        match = re.search(r'^animations \{', content, re.MULTILINE)
+        if not match:
+            raise ValueError("Could not find 'animations {' in config")
+        start = match.start()
+    else:
+        start = match.start() + 1  # skip the \n, keep it in prefix
+
+    # Walk forward to find the matching closing brace
+    depth = 0
+    i = start
+    end = None
+    while i < len(content):
+        if content[i] == '{':
+            depth += 1
+        elif content[i] == '}':
+            depth -= 1
+            if depth == 0:
+                end = i + 1
+                break
+        i += 1
+
+    if end is None:
+        raise ValueError("Could not find closing brace for animations block")
+
+    return content[:start] + new_block + content[end:]
+
+def current_shader(content):
+    m = re.search(r'// Active shader: (\S+)', content)
+    return m.group(1) if m else None
+
+def main():
+    shaders = available_shaders()
+
+    if len(sys.argv) < 2 or sys.argv[1] in ("-h", "--help"):
+        with open(CONFIG_PATH) as f:
+            content = f.read()
+        active = current_shader(content)
+        print("Usage: niri-shader <name>")
+        print("Available:", ", ".join(shaders))
+        if active:
+            print(f"Current:   {active}")
+        sys.exit(0)
+
+    name = sys.argv[1]
+    if name not in shaders:
+        print(f"Error: unknown shader '{name}'")
+        print("Available:", ", ".join(shaders))
+        sys.exit(1)
+
+    with open(CONFIG_PATH) as f:
+        content = f.read()
+
+    new_block = build_animations_block(name)
+    new_content = replace_animations_block(content, new_block)
+
+    with open(CONFIG_PATH, "w") as f:
+        f.write(new_content)
+
+    print(f"Switched to: {name}")
+
+if __name__ == "__main__":
+    main()

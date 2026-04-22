@@ -1,0 +1,2 @@
+#!/usr/bin/env sh
+fd -H --strip-cwd-prefix --color=always | fzf --ansi

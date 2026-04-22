@@ -337,6 +337,7 @@ modules:
         # glow → homebrew: glow
         # zoxide → homebrew: zoxide
         - chezmoi # dotfile manager — must be in image to bootstrap dotfiles before brew
+        - just # command runner for sjust setup recipes
         - smartmontools # think already in base-main
         - usbutils # think already in base-main
         - inxi

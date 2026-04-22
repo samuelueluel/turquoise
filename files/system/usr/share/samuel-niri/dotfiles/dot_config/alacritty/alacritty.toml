@@ -1,0 +1,81 @@
+[general]
+import = [
+  "~/.config/alacritty/themes/noctalia.toml",
+]
+
+[font]
+size = 12.0
+
+[font.normal]
+family = "JetBrainsMono Nerd Font"
+style = "Bold"
+
+[font.bold]
+family = "JetBrainsMono Nerd Font"
+style = "Bold"
+
+[font.italic]
+family = "JetBrainsMono Nerd Font"
+style = "Italic"
+
+[window]
+class = { instance = "Alacritty", general = "alacritty-custom" }
+padding = { x = 10, y = 10 }
+opacity = 1.0
+decorations = "none"
+
+[[keyboard.bindings]]
+key = "Return"
+mods = "Shift"
+chars = "\u001B\r"
+
+[[keyboard.bindings]]
+key = "C"
+mods = "Control|Shift"
+action = "Copy"
+
+[[keyboard.bindings]]
+key = "V"
+mods = "Control|Shift"
+action = "Paste"
+
+[[keyboard.bindings]]
+key = "W"
+mods = "Alt"
+chars = "\u001B[A"
+
+[[keyboard.bindings]]
+key = "S"
+mods = "Alt"
+chars = "\u001B[B"
+
+[[keyboard.bindings]]
+key = "A"
+mods = "Alt"
+chars = "\u001Bb"
+
+[[keyboard.bindings]]
+key = "D"
+mods = "Alt"
+chars = "\u001Bf"
+
+[[keyboard.bindings]]
+key = "Q"
+mods = "Control"
+chars = "\u001B\u007F"
+
+[[keyboard.bindings]]
+key = "W"
+mods = "Control"
+chars = "\u007F"
+
+[[keyboard.bindings]]
+key = "Q"
+mods = "Alt"
+chars = "\u0002"
+
+[[keyboard.bindings]]
+key = "E"
+mods = "Alt"
+chars = "\u0006"
+

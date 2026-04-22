@@ -1,0 +1,10 @@
+[Unit]
+Description=Empty Trash on Login
+After=default.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/bash -c "yes | /usr/bin/gio trash --empty"
+
+[Install]
+WantedBy=default.target

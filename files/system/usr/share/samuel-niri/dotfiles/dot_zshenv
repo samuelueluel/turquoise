@@ -1,0 +1,27 @@
+# ── Homebrew Activation ──────────────────────────────────────────────────────
+# This command dynamically sets PATH, MANPATH, INFOPATH, and HOMEBREW_PREFIX.
+# It only runs once per login session.
+if [ -d "/home/linuxbrew/.linuxbrew/bin" ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+
+
+
+# Sourced by ZSH for every process (login, interactive, and scripts).
+# PATH lives here so it's set before systemctl import-environment runs in niri-session.
+# export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$HOME/.npm-global/bin:/usr/sbin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin"
+# export FORCE_COLOR=1 #maybe not necessary after export
+
+
+
+# Sourced for EVERY zsh process
+# Use this ONLY for paths that absolutely must be available to scripts
+# This approach is safer because it allows changes to Fedora-declared paths; hard-overwriting like above blocks access to new paths
+typeset -U path  # Keep path unique
+path=(
+  "$HOME/.local/bin"
+  "$HOME/.cargo/bin"
+  "$HOME/.npm-global/bin"
+  $path
+)
+export PATH

@@ -1,0 +1,6 @@
+@import url("noctalia.css");
+
+/* Force semi-bold (600) for all text to match system font setting */
+* {
+  font-weight: 600;
+}

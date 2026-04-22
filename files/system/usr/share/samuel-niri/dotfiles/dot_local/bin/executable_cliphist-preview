@@ -1,0 +1,15 @@
+#!/bin/bash
+entry="$*"
+printf "\033[2J\033[H"
+
+if [[ "$entry" == *"[[ binary data"* ]]; then
+    tmpfile=$(mktemp /tmp/cliphist-preview.XXXXXX)
+    trap 'rm -f "$tmpfile"' EXIT
+    echo "$entry" | cliphist decode > "$tmpfile" 2>/dev/null
+    kitten icat --clear --transfer-mode=memory --unicode-placeholder \
+        --stdin=no \
+        --place="$((FZF_PREVIEW_COLUMNS - 2))x${FZF_PREVIEW_LINES}@0x0" \
+        "$tmpfile" | sed '$d' | sed $'$s/$/\\e\[m/'
+else
+    echo "$entry" | cliphist decode 2>/dev/null
+fi

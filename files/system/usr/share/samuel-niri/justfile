@@ -1,0 +1,141 @@
+set shell := ["bash", "-euo", "pipefail", "-c"]
+
+HOME      := env_var("HOME")
+SHARE     := "/usr/share/samuel-niri"
+ZSH_PLUGS := HOME + "/.local/share/zsh/plugins"
+ZEN_DIR   := HOME + "/.config/zen"
+
+# List available recipes
+default:
+    @just --justfile /usr/share/samuel-niri/justfile --list
+
+# Full setup — run everything in order
+setup: dirs chezmoi zsh-plugins zen claude-gemini brew flatpaks system
+    update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
+    @echo ""
+    @echo "Done. Manual steps remaining:"
+    @echo "  - Wallpapers: cp -r ~/system_config_git/Wallpapers ~/Pictures/Wallpapers"
+    @echo "  - Dropbox: sign in"
+    @echo "  - EasyEffects: open app to confirm presets loaded"
+    @echo "  - Zen Browser: install extensions manually"
+
+# Pre-create required directories
+dirs:
+    mkdir -p \
+        {{HOME}}/.local/bin \
+        {{HOME}}/.local/share/applications \
+        {{HOME}}/.local/share/zsh/plugins \
+        {{HOME}}/.config \
+        {{HOME}}/.gnome2/accels \
+        {{HOME}}/.claude \
+        {{HOME}}/.gemini \
+        {{HOME}}/.ssh \
+        {{HOME}}/.npm-global/bin
+    chmod 700 {{HOME}}/.ssh
+
+# Deploy dotfiles from image snapshot, init chezmoi, apply
+# After SSH is set up: cd ~/dotfiles && git init && git remote add origin <your-repo> && git fetch && git reset --hard origin/main
+chezmoi:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -d "$HOME/dotfiles/.git" ]]; then
+        echo "Populating ~/dotfiles from image snapshot..."
+        rsync -a {{SHARE}}/dotfiles/ "$HOME/dotfiles/"
+    fi
+    chezmoi init --source="$HOME/dotfiles"
+    chezmoi apply --force
+    systemctl --user enable empty-trash.service battery-notify.service cliphist-wipe.service || true
+
+# Clone zsh plugins (powerlevel10k, fzf-tab)
+zsh-plugins:
+    @test -d {{ZSH_PLUGS}}/powerlevel10k || \
+        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git {{ZSH_PLUGS}}/powerlevel10k
+    @test -d {{ZSH_PLUGS}}/fzf-tab || \
+        git clone --depth=1 https://github.com/Aloxaf/fzf-tab {{ZSH_PLUGS}}/fzf-tab
+
+# Set up Zen Browser profiles, restore settings, generate launchers
+zen:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    command -v zen-browser &>/dev/null || { echo "Zen Browser not found, skipping."; exit 0; }
+
+    zen-browser -CreateProfile "personal {{ZEN_DIR}}/zen.personal" 2>/dev/null || true
+    zen-browser -CreateProfile "utility {{ZEN_DIR}}/zen.utility"   2>/dev/null || true
+    zen-browser -CreateProfile "work {{ZEN_DIR}}/zen.work"         2>/dev/null || true
+
+    SRC="{{SHARE}}/zen/personal"
+    for profile in zen.personal zen.utility zen.work; do
+        DEST="{{ZEN_DIR}}/$profile"
+        mkdir -p "$DEST/chrome"
+        cp "$SRC/user.js"                      "$DEST/" 2>/dev/null || true
+        cp "$SRC/zen-keyboard-shortcuts.json"  "$DEST/" 2>/dev/null || true
+        cp "$SRC/zen-themes.json"              "$DEST/" 2>/dev/null || true
+        cp "$SRC/chrome/zen-themes.css"        "$DEST/chrome/" 2>/dev/null || true
+        cp -r "$SRC/chrome/zen-themes"         "$DEST/chrome/" 2>/dev/null || true
+    done
+
+    declare -A ICONS=( ["personal"]="a7xpg" ["utility"]="braindump" ["work"]="applications-office" )
+    for profile in personal utility work; do
+        NAME="Zen (${profile^})"
+        ICON="${ICONS[$profile]}"
+        FILE="{{HOME}}/.local/share/applications/zen-${profile}.desktop"
+        cat > "$FILE" <<EOF
+[Desktop Entry]
+Name=$NAME
+Comment=Launch Zen Browser with the ${profile^} profile
+Exec=env MOZ_APP_REMOTINGNAME=zen-$profile zen-browser --profile "{{ZEN_DIR}}/zen.$profile" %u
+Icon=$ICON
+Terminal=false
+Type=Application
+Categories=Network;WebBrowser;
+StartupWMClass=zen-$profile
+MimeType=x-scheme-handler/unknown;x-scheme-handler/about;x-scheme-handler/https;x-scheme-handler/http;text/html;
+EOF
+        chmod +x "$FILE"
+    done
+
+    xdg-settings set default-web-browser zen-utility.desktop 2>/dev/null || true
+    for mime in x-scheme-handler/http x-scheme-handler/https text/html \
+                application/xhtml+xml application/x-extension-html \
+                application/x-extension-shtml application/x-extension-xhtml \
+                x-scheme-handler/about x-scheme-handler/unknown; do
+        xdg-mime default zen-utility.desktop "$mime" 2>/dev/null || true
+    done
+
+# Restore Claude Code and Gemini CLI settings
+claude-gemini:
+    mkdir -p {{HOME}}/.claude {{HOME}}/.gemini
+    cp {{SHARE}}/app-settings/claude/settings.json {{HOME}}/.claude/settings.json
+    cp {{SHARE}}/app-settings/gemini/settings.json {{HOME}}/.gemini/settings.json
+
+# Fix Homebrew, install packages from ~/.Brewfile, install rtk and bbrew
+brew:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    sudo rm -f /etc/.linuxbrew
+    sudo systemctl start brew-setup.service || true
+    sudo chown -R "$(whoami):$(id -g)" /home/linuxbrew
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    brew bundle --global
+    brew install gcc make
+    brew install rtk
+    rtk init -g --yes || true
+    rtk init -g --gemini --yes || true
+    BBREW_VERSION=$(curl -fsSL https://api.github.com/repos/Valkyrie00/bold-brew/releases/latest \
+        | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
+    curl -L "https://github.com/Valkyrie00/bold-brew/releases/download/v${BBREW_VERSION}/bbrew_${BBREW_VERSION}_linux_amd64.tar.gz" \
+        | tar -xz -C /tmp \
+        && mv /tmp/bbrew "$(brew --prefix)/bin/bbrew"
+
+# Apply Flatpak permission overrides for theming
+flatpaks:
+    flatpak override --user --filesystem=xdg-config/gtk-3.0:ro io.github.quodlibet.QuodLibet || true
+    flatpak override --user --filesystem=xdg-config/gtk-4.0:ro com.saivert.pwvucontrol || true
+
+# Add user to libvirt group and set zsh as default shell
+system:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    groups "$(whoami)" | grep -q '\blibvirt\b' || sudo usermod -aG libvirt "$(whoami)"
+    ZSH_PATH="$(command -v zsh)"
+    [[ "$SHELL" == "$ZSH_PATH" ]] || sudo usermod -s "$ZSH_PATH" "$(whoami)"

@@ -1,0 +1,29 @@
+[
+  {
+    "bindings": {
+      "ctrl-q": "pane::CloseActiveItem"
+    }
+  },
+  {
+    "context": "Workspace",
+    "bindings": {
+      "ctrl-space": "command_palette::Toggle"
+    }
+  },
+  {
+    "context": "Editor",
+    "bindings": {
+      "ctrl-space": "command_palette::Toggle",
+      "ctrl-r": "editor::ReloadFile",
+      "alt-w": "editor::MoveUp",
+      "alt-a": "editor::MoveLeft",
+      "alt-s": "editor::MoveDown",
+      "alt-d": "editor::MoveRight"
+    }
+  },
+  {
+    "bindings": {
+      "alt-tab": "pane::AlternateFile"
+    }
+  }
+]

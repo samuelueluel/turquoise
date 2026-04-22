@@ -1,0 +1,690 @@
+// This config is in the KDL format: https://kdl.dev
+// "/-" comments out the following node.
+// Check the wiki for a full description of the configuration:
+// https://yalter.github.io/niri/Configuration:-Introduction
+
+// ============================================================
+// NAMED WORKSPACES
+// ============================================================
+
+workspace "casual"
+workspace "utility"
+workspace "work"
+
+// ============================================================
+// CURSOR
+// ============================================================
+
+cursor {
+    xcursor-theme "oreo_spark_orange_cursors"
+    xcursor-size 32
+}
+
+// ============================================================
+// ENVIRONMENT
+// ============================================================
+
+environment {
+    QT_QPA_PLATFORMTHEME "qt6ct"
+    PATH "{{ .chezmoi.homeDir }}/.local/bin:{{ .chezmoi.homeDir }}/.cargo/bin:{{ .chezmoi.homeDir }}/.npm-global/bin:/usr/local/sbin:/usr/local/bin:/usr/bin:/usr/sbin"
+}
+
+// ============================================================
+// INPUT
+// ============================================================
+
+input {
+    keyboard {
+        xkb {
+            // I don't use this because I want Caps Lock = Mod even if not using Niri
+            //options "caps:menu" // caps:super = Caps Lock becomes Mod, altwin:menu_win = Physical Start button becomes the 'Menu' key
+        }
+        numlock // Enable numlock on startup, omitting this setting disables it.
+    }
+
+    touchpad {
+        // off
+        tap
+        accel-speed 0.2
+    }
+
+    mouse {
+    }
+
+    trackpoint {
+    }
+}
+
+// ============================================================
+// OUTPUTS (MONITORS)
+// ============================================================
+
+// You can configure outputs by their name, which you can find
+// by running `niri msg outputs` while inside a niri instance.
+// The built-in laptop monitor is usually called "eDP-1".
+// Find more information on the wiki:
+// https://yalter.github.io/niri/Configuration:-Outputs
+// Remember to uncomment the node by removing "/-"!
+/-output "eDP-1" {
+    // Uncomment this line to disable this output.
+    // off
+
+    // Resolution and, optionally, refresh rate of the output.
+    // The format is "<width>x<height>" or "<width>x<height>@<refresh rate>".
+    // If the refresh rate is omitted, niri will pick the highest refresh rate
+    // for the resolution.
+    // If the mode is omitted altogether or is invalid, niri will pick one automatically.
+    // Run `niri msg outputs` while inside a niri instance to list all outputs and their modes.
+    mode "1920x1080@120.030"
+
+    // You can use integer or fractional scale, for example use 1.5 for 150% scale.
+    scale 2
+
+    // Transform allows to rotate the output counter-clockwise, valid values are:
+    // normal, 90, 180, 270, flipped, flipped-90, flipped-180 and flipped-270.
+    transform "normal"
+
+    // Position of the output in the global coordinate space.
+    // This affects directional monitor actions like "focus-monitor-left", and cursor movement.
+    // The cursor can only move between directly adjacent outputs.
+    // Output scale and rotation has to be taken into account for positioning:
+    // outputs are sized in logical, or scaled, pixels.
+    // For example, a 3840×2160 output with scale 2.0 will have a logical size of 1920×1080,
+    // so to put another output directly adjacent to it on the right, set its x to 1920.
+    // If the position is unset or results in an overlap, the output is instead placed
+    // automatically.
+    position x=1280 y=0
+}
+
+// ============================================================
+// LAYOUT
+// ============================================================
+
+layout {
+    gaps 6 // 6 current; 2 for "multi-screen"
+
+    background-color "#000000" // Black
+    //background-color "#EE9D00" // gold
+    //background-color "#574150"  // theme gray
+
+    //center-focused-column "never"
+    center-focused-column "always"
+
+    default-column-width { proportion 0.76666667; }
+
+    preset-column-widths {
+        proportion 1.0
+        proportion 0.66666667
+        proportion 0.5
+        proportion 0.33333333
+    }
+
+    preset-window-heights {
+        proportion 1.0
+        proportion 0.66666667
+        proportion 0.5
+        proportion 0.33333333
+    }
+
+    focus-ring {
+        //off
+
+        width 1 // 1 current; 0 for "multi-screen"
+
+        //active-color "#AD4E49"
+        //active-color "#000000"
+        //active-color "#00B6C2"
+        //active-color "#007f87" // dark turqoise
+        //active-color "#05ebfa" // bright turq
+        active-color "#00A4AF"  //theme turqoise
+        //active-color "#EE9D00"  // theme gold
+        //active-color "#2EBF82" // theme green
+        //active-color "#f72dbb" // magenta
+        //active-color "#D0A7AF" // secondary theme
+        //active-color "#f70000" pure red
+        //inactive-color "#858585"
+    }
+
+    border {
+        // off
+
+        width 3 // 3 current; 3 for "multi-screen"
+
+        //active-color "#00B6C2" // lighter turqoise
+        //active-color "#007f87" // dark turqoise
+        //active-color "#05ebfa" // bright turq
+        //active-color "#a8888f"
+        //active-color "#000000"
+        //active-color "#00A4AF" // slighter darker turqoise
+        active-color "#00B6C2" // exact theme turqoise
+        //active-color "#EE9D00"  // theme gold
+        //active-color "#2EBF82" // theme green
+        //inactive-color "#178B69" // green
+        //inactive-color "#2957BC" // darker blue
+        //inactive-color "#712D2B" // redish brown
+        //inactive-color "#AD4E49" // clay brown
+        //inactive-color "#AD5B5B" // terra cotta
+        //inactive-color "#A14763" // terra cotta 2
+        inactive-color "#D0A7AF" // exact theme peach
+        //inactive-color "#b08f95"
+        //inactive-color "#ba979e"
+        //inactive-color "#a8888f"
+        //inactive-color "#000000"
+        //inactive-color "#94787d"
+        //inactive-color "#574150"
+        //inactive-color "#B1B9F9" //blue-white
+        urgent-color "#EE9D00" // theme gold
+    }
+
+    shadow {
+    }
+
+    struts {
+        left 0
+        right 0
+        top 0
+        bottom 0
+    }
+
+    tab-indicator {
+        place-within-column
+        position "right"
+        hide-when-single-tab
+
+        gap 2
+        width 8
+        length total-proportion=1.0
+
+        //active-color "#000000"
+        //active-color "#c4a7e7"
+        //active-color "#e0def4"
+        //active-color "#fcd303"
+        //active-color "#D36483"
+        //active-color "#b33b5c"
+        active-color "#FFA726" // theme gold
+        //active-color "#d41549"
+        //active-color "#000000"
+        //active-color "#574150" // theme grayish
+        inactive-color "#00000090"   // black at ~50% opacity
+        //inactive-color "#00000033" // black at 20% opacity
+        //inactive-color "#57415099" // theme grayish at opacity
+        //inactive-color "#c4a7e7"
+        //inactive-color "#f6c177"
+        //inactive-color "#232136"
+        //active-color "#8CBAC2"
+    }
+}
+
+// ============================================================
+// GENERAL SETTINGS
+// ============================================================
+
+prefer-no-csd
+
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+hotkey-overlay {
+    skip-at-startup
+}
+
+animations {
+    // off
+
+    slowdown 1 // Slow down all animations by this factor. Values below 1 speed them up instead.
+
+    // Active shader: circle  (switch with: niri-shader <name>)
+    window-open {
+        duration-ms 750
+        curve "ease-out-cubic"
+        custom-shader r"
+            // Ported from gl-transitions/circleopen.glsl (MIT, gre)
+
+            vec4 open_color(vec3 coords_geo, vec3 size_geo) {
+                float p = niri_clamped_progress;
+                vec2 uv = coords_geo.xy;
+                float seed = niri_random_seed;
+
+                float smoothness = 0.3;
+                float SQRT_2 = 1.414213562;
+
+                vec2 center = vec2(0.5 + (seed - 0.5) * 0.15, 0.5 + (seed * 0.7 - 0.35) * 0.15);
+
+                float dist = SQRT_2 * distance(center, uv);
+                float m = smoothstep(-smoothness, 0.0, dist - p * (1.0 + smoothness));
+                float reveal = 1.0 - m;
+
+                vec3 tc = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, tc.st);
+
+                return color * reveal;
+            }
+        "
+    }
+    window-close {
+        duration-ms 750
+        curve "ease-out-cubic"
+        custom-shader r"
+            // Ported from gl-transitions/circleopen.glsl (MIT, gre)
+
+            vec4 close_color(vec3 coords_geo, vec3 size_geo) {
+                float p = niri_clamped_progress;
+                vec2 uv = coords_geo.xy;
+                float seed = niri_random_seed;
+
+                float smoothness = 0.3;
+                float SQRT_2 = 1.414213562;
+
+                // Slightly randomized center
+                vec2 center = vec2(0.5 + (seed - 0.5) * 0.15, 0.5 + (seed * 0.7 - 0.35) * 0.15);
+
+                float dist = SQRT_2 * distance(center, uv);
+                float m = smoothstep(-smoothness, 0.0, dist - (1.0 - p) * (1.0 + smoothness));
+                float remain = 1.0 - m;
+
+                vec3 tc = niri_geo_to_tex * vec3(uv, 1.0);
+                vec4 color = texture2D(niri_tex, tc.st);
+
+                return color * remain;
+            }
+        "
+    }
+}
+
+overview {
+    zoom 0.4
+}
+
+gestures {
+    hot-corners {
+        off // This turns off hardcoded top left hot corner
+    }
+}
+
+// ============================================================
+// STARTUP
+// ============================================================
+
+// ── Bar + notifications ───────────────────────────────────────────────────
+spawn-at-startup "sh" "-c" "swaybg -i $HOME/Pictures/Wallpapers/joonyeop-baek-GK6qXiHm6Iw-unsplash.jpg -m fill"
+spawn-at-startup "waybar"
+spawn-at-startup "swaync"
+
+// ── OSD (volume/brightness popups) ───────────────────────────────────────
+spawn-at-startup "swayosd-server"
+
+// ── Clipboard daemon ──────────────────────────────────────────────────────
+spawn-at-startup "sh" "-c" "wl-paste --watch cliphist-store"
+
+// ── Display management ────────────────────────────────────────────────────
+spawn-at-startup "kanshi"
+
+// ── Night light ───────────────────────────────────────────────────────────
+// spawn-at-startup "wlsunset" "-l" "39.0" "-L" "-77.0"   // US East Coast — adjust lat/lon as needed
+
+
+// ── Idle management ───────────────────────────────────────────────────────
+spawn-at-startup "swayidle" "-w"
+
+// ── Apps ──────────────────────────────────────────────────────────────────
+spawn-at-startup "sh" "-c" "sleep 5 && dropbox start -i"
+spawn-at-startup "sh" "-c" "sleep 5 && flatpak run com.github.wwmm.easyeffects --gapplication-service"
+spawn-at-startup "/usr/bin/niriusd"
+spawn-at-startup "udiskie" "--no-tray" // auto-mount USB / external drives
+// mpris-proxy removed: airpods-media.service (evdev daemon) handles routing to Quod Libet directly
+
+// ============================================================
+// WINDOW RULES
+// ============================================================
+
+// --- Global Appearance ---
+
+window-rule {
+    geometry-corner-radius 1 // 7; corner roundedness
+    clip-to-geometry true
+}
+
+// --- Workspace Assignments ---
+
+window-rule {
+match {} // Matches everything except exlcuded below
+exclude app-id="zen-personal"
+exclude app-id="io.github.quodlibet.QuodLibet"
+exclude app-id="zen-work"
+exclude app-id="kitty"
+exclude title="termfilechooser"
+exclude title="File Launcher"
+exclude title="Folder Launcher"
+exclude title="Keybind Search"
+exclude title="Clipboard History"
+exclude title="Alacritty Float"
+exclude title="bluetuith"
+exclude title="nmtui"
+exclude title="htop"
+exclude app-id="org.gnome.SystemMonitor"
+exclude app-id="nemo"
+exclude app-id="nm-connection-editor"
+exclude app-id="blueman-manager"
+exclude app-id="com.github.wwmm.easyeffects"
+exclude app-id="mpv"
+open-on-workspace "utility" // May need to adjust for work-specific apps
+}
+
+window-rule {
+    match app-id="zen-work"
+    open-on-workspace "work"
+    default-column-width { proportion 1.0; }
+}
+
+window-rule {
+    match app-id="zen-personal"
+    match app-id="io.github.quodlibet.QuodLibet"
+    open-on-workspace "casual"
+    default-column-width { proportion 1.0; }
+}
+
+// --- Custom Floating Launchers ---
+
+window-rule {
+    match title="File Launcher" // Catch the specific window title we set in the bind command
+    open-floating true
+    default-column-width { fixed 1500; }
+    default-window-height { fixed 800; }
+}
+
+window-rule {
+    match title="Folder Launcher" // Catch the specific window title we set in the bind command
+    open-floating true
+    default-column-width { fixed 1500; }
+    default-window-height { fixed 800; }
+}
+
+window-rule {
+    match title="Yazi Float"
+    open-floating true
+    default-column-width { fixed 1500; }
+    default-window-height { fixed 800; }
+}
+
+window-rule {
+    match title="Keybind Search" // Catch the specific window title we set in the bind command
+    open-floating true
+    default-column-width { fixed 1500; }
+    default-window-height { fixed 800; }
+}
+
+window-rule {
+    match title="Clipboard History"
+    open-floating true
+    default-column-width { fixed 1500; }
+    default-window-height { fixed 800; }
+}
+
+window-rule {
+    match title="Alacritty Float"
+    open-floating true
+    default-column-width { fixed 1500; }
+    default-window-height { fixed 800; }
+}
+
+window-rule {
+    match title="nmtui"
+    open-floating true
+    default-column-width { fixed 800; }
+    default-window-height { fixed 550; }
+}
+
+window-rule {
+    match title="htop"
+    open-floating true
+    default-column-width { fixed 1200; }
+    default-window-height { fixed 700; }
+}
+
+window-rule {
+    match title="bluetuith"
+    open-floating true
+    default-column-width { fixed 1000; }
+    default-window-height { fixed 600; }
+}
+
+// --- Opacity / Dimming ---
+
+// 1. The Global Dimming Rule (Base behavior) --- to make window focus switching a little more obvious
+window-rule {
+    match is-active=false
+    exclude is-floating=true
+    opacity 0.75
+    draw-border-with-background false
+}
+
+// 2. The Picture-in-Picture Exception
+window-rule {
+    match title="(?i)picture in picture|picture-in-picture"
+    opacity 1.0
+}
+
+// 3. The Zen "Personal" Exception (Optional)
+window-rule {
+    match app-id="zen-personal"
+    opacity 1.0
+}
+
+// 4. The mpv exception
+window-rule {
+    match app-id="^mpv$"
+    opacity 1.0
+}
+
+// 5. All floating windows stay fully opaque
+window-rule {
+    match is-floating=true
+    opacity 1.0
+}
+
+// ============================================================
+// KEYBINDS
+// ============================================================
+
+recent-windows { // Disable hard-coded alt+tab binding
+    binds {
+    }
+}
+
+binds {
+
+    // -----------------------------------
+    // SYSTEM
+    // -----------------------------------
+
+    Mod+0 hotkey-overlay-title="Toggle overview" { toggle-overview; }
+    Ctrl+Alt+Delete hotkey-overlay-title="Log out" { quit; }
+    Mod+Escape hotkey-overlay-title="Toggle keybind inhibitor for RD/VM" allow-inhibiting=false { toggle-keyboard-shortcuts-inhibit; }
+
+    // -----------------------------------
+    // SHELL CONTROLS
+    // -----------------------------------
+
+    XF86MenuKB hotkey-overlay-title="Toggle minimap" repeat=false { spawn "niri-minimap"; }
+    Mod+B hotkey-overlay-title="Toggle Waybar" { spawn-sh "pkill -SIGUSR1 waybar || waybar"; }
+    Mod+Space hotkey-overlay-title="App launcher (fuzzel)" repeat=false { spawn "fuzzel"; }
+    // Mod+V hotkey-overlay-title="Clipboard history (cliphist)" repeat=false { spawn-sh "cliphist list | fuzzel --dmenu | cliphist decode | wl-copy"; }
+    Mod+Y hotkey-overlay-title="Toggle notification center" { spawn "swaync-client" "-t"; }
+
+    // -----------------------------------
+    // APPLICATION LAUNCHERS
+    // -----------------------------------
+
+    Mod+Grave hotkey-overlay-title="Spawn additional Alacritty"  repeat=false { spawn "alacritty"; }
+    Mod+Ctrl+Grave hotkey-overlay-title="Spawn floating Alacritty" repeat=false { spawn "alacritty" "--title" "Alacritty Float"; }
+    Mod+E hotkey-overlay-title="Spawn floating Yazi (auto-close on open)" repeat=false { spawn-sh "YAZI_FLOAT=1 kitty --title 'Yazi Float' -e zsh -c 'exec yazi'"; }
+    Mod+Ctrl+E hotkey-overlay-title="Spawn Yazi file manager" repeat=false { spawn "kitty" "--title" "yazi" "-e" "zsh" "-c" "exec yazi"; }
+    // Mod+Space hotkey-overlay-title="fzf file search (Ctrl+Y to copy)" repeat=false { spawn-sh "alacritty -t 'File Launcher' -e $HOME/.config/niri/open-file.sh"; }
+    // Mod+Ctrl+Space hotkey-overlay-title="fzf folder search (Ctrl+Y to copy)" repeat=false { spawn-sh "alacritty -t 'Folder Launcher' -e $HOME/.config/niri/open-folder.sh"; }
+    Mod+Slash hotkey-overlay-title="Keybind search" repeat=false { spawn-sh "alacritty -t 'Keybind Search' -e bash -c 'python3 $HOME/.config/niri/niri_parse_keybinds.py | fzf --reverse --border=rounded --info=inline'"; }
+
+    // -----------------------------------
+    // WINDOW MANAGEMENT
+    // -----------------------------------
+
+    Mod+Ctrl+Q hotkey-overlay-title="Close window"  repeat=false { spawn-sh "~/.config/niri/smart-close.sh"; }
+    Mod+P hotkey-overlay-title="Toggle window floating" { toggle-window-floating; } // note this will also make non-floating windows sticky, but buggy
+    Mod+Ctrl+P hotkey-overlay-title="Toggle window follow mode" { spawn "/usr/bin/nirius" "toggle-follow-mode"; }
+
+    Mod+O hotkey-overlay-title="Toggle window scratchpad state" { spawn "/usr/bin/nirius" "scratchpad-toggle"; } // Oh not Zero
+    Mod+1 hotkey-overlay-title="Show all scratchpad windows" { spawn "/usr/bin/nirius" "scratchpad-show-all"; }
+    Mod+2 hotkey-overlay-title="Cycle scratchpad windows" { spawn "/usr/bin/nirius" "scratchpad-show"; }
+
+    Mod+G hotkey-overlay-title="Toggle fullscreen" { fullscreen-window; }
+    Mod+Ctrl+G hotkey-overlay-title="Expand column to available width" { expand-column-to-available-width; }
+    Mod+F hotkey-overlay-title="Cycle column width" { switch-preset-column-width; }      // cycles over chosen presets
+    Mod+Ctrl+F hotkey-overlay-title="Cycle window height" { switch-preset-window-height; } // cycles over chosen presets
+
+    Mod+L hotkey-overlay-title="Toggle column tab mode" { toggle-column-tabbed-display; }
+
+    Mod+Comma hotkey-overlay-title="Consume/expel window left"  { spawn "niri-nav" "consume-or-expel-window-left"; }
+    Mod+Period hotkey-overlay-title="Consume/expel window right" { spawn "niri-nav" "consume-or-expel-window-right"; }
+    //Mod+Ctrl+Shift+A hotkey-overlay-title="Consume/expel window left"  { spawn "niri-nav" "consume-or-expel-window-left"; }
+    //Mod+Ctrl+Shift+D hotkey-overlay-title="Consume/expel window right" { spawn "niri-nav" "consume-or-expel-window-right"; }
+
+
+    // -----------------------------------
+    // FOCUS NAVIGATION
+    // -----------------------------------
+
+    Mod+W { spawn "niri-nav" "focus-window-or-workspace-up"; }
+    Mod+A { spawn "niri-nav" "focus-column-left"; }
+    Mod+S { spawn "niri-nav" "focus-window-or-workspace-down"; }
+    Mod+D { spawn "niri-nav" "focus-column-right"; }
+
+    Mod+Up    { focus-window-or-workspace-up; }
+    Mod+Left  { focus-column-left; }
+    Mod+Down  { focus-window-or-workspace-down; }
+    Mod+Right { focus-column-right; }
+
+    //Mod+I hotkey-overlay-title="Toggle focus mode (wallpaper + centering + opacity)" repeat=false { spawn "niri-mode-toggle"; }
+    Mod+I hotkey-overlay-title="Toggle tile-scroll mode (50% columns)" repeat=false { spawn "niri-tile-toggle"; }
+    Mod+Ctrl+B hotkey-overlay-title="Toggle waybar tray" repeat=false { spawn "waybar-tray-toggle"; }
+    Mod+Ctrl+I hotkey-overlay-title="Resize right column to complement of focused" repeat=false { spawn "niri-complement-column"; }
+
+    Mod+Tab hotkey-overlay-title="Focus previous window" { focus-window-previous; }
+
+    // -----------------------------------
+    // FOCUS/MOVE COLUMNS AND WINDOWS
+    // -----------------------------------
+
+    Mod+Ctrl+W { move-window-up-or-to-workspace-up; }
+    Mod+Ctrl+A { move-column-left; }
+    Mod+Ctrl+S { move-window-down-or-to-workspace-down; }
+    Mod+Ctrl+D { move-column-right; }
+
+    Mod+Ctrl+Up    { move-window-up-or-to-workspace-up; }
+    Mod+Ctrl+Left  { move-column-left; }
+    Mod+Ctrl+Down  { move-window-down-or-to-workspace-down; }
+    Mod+Ctrl+Right { move-column-right; }
+
+    // -----------------------------------
+    // RESIZE COLUMNS AND WINDOWS
+    // -----------------------------------
+
+    Mod+Minus      { set-column-width "-5%"; }
+    Mod+Equal      { set-column-width "+5%"; }
+
+    Mod+Ctrl+Minus { set-window-height "-5%"; }
+    Mod+Ctrl+Equal { set-window-height "+5%"; }
+
+    // -----------------------------------
+    // FOCUS/MOVE WORKSPACE WITH MOUSE
+    // -----------------------------------
+
+    Mod+WheelScrollDown cooldown-ms=150 { focus-workspace-down; }
+    Mod+WheelScrollUp   cooldown-ms=150 { focus-workspace-up; }
+
+    Mod+Ctrl+WheelScrollDown cooldown-ms=150 { move-column-to-workspace-down; }
+    Mod+Ctrl+WheelScrollUp   cooldown-ms=150 { move-column-to-workspace-up; }
+
+    // -----------------------------------
+    // REORDER WORKSPACES
+    // -----------------------------------
+
+    Mod+Shift+Page_Down { move-workspace-down; }
+    Mod+Shift+Page_Up   { move-workspace-up; }
+
+    // -----------------------------------
+    // FOCUS/MOVE MONITOR
+    // -----------------------------------
+
+    Mod+Shift+A     { focus-monitor-left; }
+    Mod+Shift+S     { focus-monitor-down; }
+    Mod+Shift+W     { focus-monitor-up; }
+    Mod+Shift+R     { focus-monitor-right; }
+
+    Mod+Shift+Left  { focus-monitor-left; }
+    Mod+Shift+Down  { focus-monitor-down; }
+    Mod+Shift+Up    { focus-monitor-up; }
+    Mod+Shift+Right { focus-monitor-right; }
+
+    //Mod+Shift+Ctrl+A  { move-column-to-monitor-left; }
+    //Mod+Shift+Ctrl+S  { move-column-to-monitor-down; }
+    //Mod+Shift+Ctrl+W    { move-column-to-monitor-up; }
+    //Mod+Shift+Ctrl+D { move-column-to-monitor-right; }
+
+    //Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
+    //Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
+    //Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
+    //Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+
+    // -----------------------------------
+    // SCROLL BINDS (COLUMN FOCUS AND MOVE)
+    // -----------------------------------
+
+    //Mod+WheelScrollRight      { focus-column-right; }
+    //Mod+WheelScrollLeft       { focus-column-left; }
+    //Mod+Ctrl+WheelScrollRight { move-column-right; }
+    //Mod+Ctrl+WheelScrollLeft  { move-column-left; }
+
+    //Mod+Shift+WheelScrollDown      { focus-column-right; }
+    //Mod+Shift+WheelScrollUp        { focus-column-left; }
+    //Mod+Ctrl+Shift+WheelScrollDown { move-column-right; }
+    //Mod+Ctrl+Shift+WheelScrollUp   { move-column-left; }
+
+    // -----------------------------------
+    // CLIPBOARD
+    // -----------------------------------
+
+    //Mod+V hotkey-overlay-title="Spawn CopyQ" { spawn "copyq" "toggle"; } just launch from fuzzel
+
+    // -----------------------------------
+    // MEDIA CONTROLS
+    // -----------------------------------
+
+    XF86AudioPlay  { spawn "playerctl" "--player=quodlibet" "play-pause"; }
+    XF86AudioPause { spawn "playerctl" "--player=quodlibet" "play-pause"; }
+    XF86AudioNext  { spawn "playerctl" "--player=quodlibet" "next"; }
+    XF86AudioPrev  { spawn "playerctl" "--player=quodlibet" "previous"; }
+
+    Mod+Z hotkey-overlay-title="Play/pause Quod Libet"   { spawn "playerctl" "--player=quodlibet" "play-pause"; }
+    Mod+Ctrl+Z hotkey-overlay-title="Play/pause Zen" { spawn "playerctl" "--player=firefox" "play-pause"; }
+
+    // -----------------------------------
+    // VOLUME AND BRIGHTNESS
+    // -----------------------------------
+
+    XF86AudioRaiseVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "raise"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn "swayosd-client" "--output-volume" "lower"; }
+    XF86AudioMute        allow-when-locked=true { spawn "swayosd-client" "--output-volume" "mute-toggle"; }
+    XF86AudioMicMute     allow-when-locked=true { spawn "swayosd-client" "--input-volume" "mute-toggle"; }
+
+    XF86MonBrightnessUp   allow-when-locked=true { spawn "swayosd-client" "--brightness" "raise"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "swayosd-client" "--brightness" "lower"; }
+
+    // -----------------------------------
+    // SCREENSHOTS
+    // -----------------------------------
+
+    Print      { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print  { screenshot-window; }
+
+}
+
+//include "./noctalia.kdl" // Noctalia places this here to enforce Template color scheme onto Niri elements; usually don't want this

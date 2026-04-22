@@ -1,0 +1,18 @@
+# swayidle configuration
+# Plugged in: display off 10min, lock 15min, no suspend
+# Battery:    display off 5min, lock 5min30s, suspend 15min
+
+# Display off
+timeout 300  'sh -c "[ $(cat /sys/class/power_supply/AC/online) = 0 ] && niri msg action power-off-monitors"'
+timeout 600  'sh -c "[ $(cat /sys/class/power_supply/AC/online) = 1 ] && niri msg action power-off-monitors"'
+
+# Lock screen
+timeout 330  'sh -c "[ $(cat /sys/class/power_supply/AC/online) = 0 ] && swaylock"'
+timeout 900  'sh -c "[ $(cat /sys/class/power_supply/AC/online) = 1 ] && swaylock"'
+
+# Suspend (battery only)
+timeout 900  'sh -c "[ $(cat /sys/class/power_supply/AC/online) = 0 ] && systemctl suspend"'
+
+after-resume 'niri msg action power-on-monitors'
+
+before-sleep 'swaylock'

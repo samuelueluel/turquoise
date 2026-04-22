@@ -1,0 +1,14 @@
+# Fuzzel Colors — Noctalia palette (static snapshot)
+
+[colors]
+background=a14763ff
+text=b1b9f9ff
+prompt=e7bac2ff
+placeholder=2ec677ff
+input=00b6c2ff
+match=2ec677ff
+selection=00b6c280
+selection-text=b1b9f9ff
+selection-match=000000ff
+counter=e7bac2ff
+border=00b6c2ff

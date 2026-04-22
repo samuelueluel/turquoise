@@ -1,0 +1,179 @@
+umask 002
+export EDITOR=zed
+export SUDO_EDITOR=zed
+
+# Lines configured by zsh-newuser-install
+HISTFILE=~/.zsh_history
+HISTSIZE=50000
+SAVEHIST=50000
+setopt extendedglob
+unsetopt beep
+bindkey -e
+bindkey '^X' undo
+
+# History (large, shared across sessions, deduped)
+setopt APPEND_HISTORY
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_REDUCE_BLANKS
+setopt INC_APPEND_HISTORY
+
+# Better globbing tools
+setopt EXTENDED_GLOB
+
+# Quality-of-life: no terminal bell
+unsetopt BEEP
+
+# Safer glob behavior
+setopt NOMATCH
+
+# Modern CLI defaults if installed
+command -v eza >/dev/null && alias ls='eza --group-directories-first --icons'
+command -v eza >/dev/null && alias ll='eza -lah --group-directories-first --icons'
+command -v bat >/dev/null && alias cat='bat'
+
+# zoxide: smart cd
+if command -v zoxide >/dev/null; then
+  eval "$(zoxide init zsh)"
+fi
+
+# atuin: shell history
+if command -v atuin >/dev/null; then
+  if [[ -f /usr/share/samuel-niri/image-id ]]; then
+    export ATUIN_DATA_DIR="$HOME/.local/share/atuin-samuel"
+  else
+    export ATUIN_DATA_DIR="$HOME/.local/share/atuin-samuel-bluefin"
+  fi
+  eval "$(atuin init zsh)"
+fi
+
+# fzf keybindings/completion
+for f in /usr/share/fzf/shell/key-bindings.zsh /usr/share/fzf/shell/completion.zsh; do
+  [ -f "$f" ] && source "$f"
+done
+
+# SSH agent: start if not running, add key if not loaded
+if ! pgrep -u "$USER" ssh-agent > /dev/null; then
+  eval "$(ssh-agent -s)" > /dev/null
+fi
+if ! ssh-add -l > /dev/null 2>&1; then
+  ssh-add ~/.ssh/id_ed25519 > /dev/null 2>&1
+fi
+
+### ----- Minimal p10k setup (no framework) -----
+
+# Instant prompt
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+# Completion
+autoload -Uz compinit
+compinit -u
+
+# Plugins (order matters: highlighting should be last)
+source ~/.local/share/zsh/plugins/powerlevel10k/powerlevel10k.zsh-theme
+[[ -f /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] && source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+source ~/.local/share/zsh/plugins/fzf-tab/fzf-tab.plugin.zsh
+[[ -f /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] && source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+
+# Recommended options
+unsetopt BEEP
+setopt NOMATCH
+setopt EXTENDED_GLOB
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+# Update function (Fedora Atomic / BlueBuild version)
+function update-all() {
+    print -P "\n%F{yellow}NOTE: uupd handles image, flatpaks, homebrew, and distroboxes automatically daily at 4am.%f"
+    print -P "\n%F{yellow}NOTE: Some packages built from source in image recipe are PINNED and won't update without manual intervention; others pull latest release without notification.%f"
+    print -P "\n%F{blue}=== System Health Check ===%f"
+    print -P "%F{cyan}  \$ systemctl --failed%f"
+    systemctl --failed
+    #print -P "%F{cyan}  \$ journalctl -p 3 -b%f"
+    #journalctl -p 3 -b --no-pager | grep -Pv "(systemd-coredump|^\s{10,}|org\.freedesktop\.FileManager1)"
+
+    print -P "\n%F{blue}=== Empty Trash? ===%f"
+    read -q "REPLY?  Empty trash? (y/n) " && gio trash --empty
+    print ""
+
+    print -P "\n%F{blue}=== Staging Image Update (bootc upgrade) ===%f"
+    print -P "%F{cyan}  \$ sudo bootc upgrade%f"
+    sudo bootc upgrade
+
+    print -P "\n%F{blue}=== Removing Unused Flatpak Runtimes ===%f"
+    print -P "%F{cyan}  \$ flatpak uninstall --unused -y%f"
+    flatpak uninstall --unused -y
+
+    #print -P "\n%F{blue}=== Updating npm global packages via Distrobox ===%f"
+    #print -P "%F{cyan}  \$ distrobox enter dev-box -- npm update -g%f"
+    #distrobox enter dev-box -- npm update -g
+
+    print -P "\n%F{blue}=== Updating Homebrew and Packages ===%f"
+    if command -v brew >/dev/null; then
+        print -P "%F{cyan}  $ brew update && brew upgrade && brew cleanup%f"
+        brew update && brew upgrade && brew cleanup
+    else
+        print -P "%F{red}  Homebrew not found, skipping.%f"
+    fi
+
+    print -P "\n%F{blue}=== Checking Firmware Updates ===%f"
+    fwupdmgr refresh && fwupdmgr get-updates
+
+    print -P "\n%F{green}Update sequence complete!%f\n"
+}
+
+# PATH is set via ~/.config/environment.d/10-path.conf
+
+# Autosuggestions: gray slot for ghost/unobtrusive text
+ZSH_AUTOSUGGEST_HIGHLIGHT_STYLE='fg=8'
+
+# Syntax highlighting: map to custom palette (only when plugin is loaded)
+if (( ${+ZSH_HIGHLIGHT_STYLES} )); then
+ZSH_HIGHLIGHT_STYLES[default]='fg=0'
+ZSH_HIGHLIGHT_STYLES[unknown-token]='fg=1'
+ZSH_HIGHLIGHT_STYLES[reserved-word]='fg=4'
+ZSH_HIGHLIGHT_STYLES[alias]='fg=2'
+ZSH_HIGHLIGHT_STYLES[builtin]='fg=2'
+ZSH_HIGHLIGHT_STYLES[function]='fg=2'
+ZSH_HIGHLIGHT_STYLES[command]='fg=2'
+ZSH_HIGHLIGHT_STYLES[precommand]='fg=4'
+ZSH_HIGHLIGHT_STYLES[commandseparator]='fg=0'
+ZSH_HIGHLIGHT_STYLES[path]='fg=0'
+ZSH_HIGHLIGHT_STYLES[globbing]='fg=4'
+ZSH_HIGHLIGHT_STYLES[history-expansion]='fg=4'
+ZSH_HIGHLIGHT_STYLES[single-hyphen-option]='fg=5'
+ZSH_HIGHLIGHT_STYLES[double-hyphen-option]='fg=5'
+ZSH_HIGHLIGHT_STYLES[back-quoted-argument]='fg=6'
+ZSH_HIGHLIGHT_STYLES[single-quoted-argument]='fg=5'
+ZSH_HIGHLIGHT_STYLES[double-quoted-argument]='fg=5'
+ZSH_HIGHLIGHT_STYLES[dollar-quoted-argument]='fg=5'
+ZSH_HIGHLIGHT_STYLES[dollar-double-quoted-argument]='fg=4'
+ZSH_HIGHLIGHT_STYLES[assign]='fg=0'
+ZSH_HIGHLIGHT_STYLES[redirection]='fg=4'
+ZSH_HIGHLIGHT_STYLES[comment]='fg=8'
+ZSH_HIGHLIGHT_STYLES[arg0]='fg=2'
+fi
+
+# Night light toggles
+alias night-on="pkill wlsunset; nohup wlsunset -l 35.7 -L -105.9 >/dev/null 2>&1 &"
+alias night-off="pkill wlsunset"
+
+# fzf keybinds
+export FZF_DEFAULT_OPTS="--bind 'alt-w:up,alt-s:down,alt-a:backward-char,alt-d:forward-char'"
+
+# pet: CLI snippet manager
+if command -v pet >/dev/null; then
+  # pets: search and execute a snippet immediately on enter
+  function pets() {
+    eval "$(pet search)"
+  }
+
+  # prev: save the last executed command as a pet snippet
+  function prev() {
+    local last=$(fc -lrn | head -1)
+    pet new "$last"
+  }
+fi

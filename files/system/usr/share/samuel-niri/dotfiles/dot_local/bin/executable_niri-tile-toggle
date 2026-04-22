@@ -1,0 +1,98 @@
+#!/bin/bash
+# Toggles between scroller mode and tile-scroll mode.
+#
+# Tile-scroll mode:
+#   - All columns on focused workspace set to 50% width (two full columns always visible)
+#   - center-focused-column never + dim unfocused to 0.9 + gaps 2 + focus-ring width 0
+#   - Black wallpaper
+
+CONFIG="$HOME/.config/niri/config.kdl"
+STATE_FILE="$HOME/.cache/niri-tile-toggle"
+WALLPAPER_FILE="$HOME/.cache/niri-tile-toggle-wallpaper"
+DEFAULT_WALLPAPER="/var/home/samuel/Pictures/Wallpapers/joonyeop-baek-GK6qXiHm6Iw-unsplash.jpg"
+
+resize_columns() {
+    COLUMN_WIDTH="$1" python3 << 'EOF'
+import os, json, subprocess, sys
+
+width = os.environ['COLUMN_WIDTH']
+
+win_res = subprocess.run(['niri', 'msg', '--json', 'windows'], capture_output=True, text=True)
+ws_res  = subprocess.run(['niri', 'msg', '--json', 'workspaces'], capture_output=True, text=True)
+win_data = json.loads(win_res.stdout)
+ws_data  = json.loads(ws_res.stdout)
+
+focused_ws_id = next((ws['id'] for ws in ws_data if ws['is_focused']), None)
+if focused_ws_id is None:
+    sys.exit(0)
+
+focused_win_id = next((w['id'] for w in win_data if w.get('is_focused')), None)
+
+# One representative window per column on the focused workspace
+cols = {}
+for w in win_data:
+    if w.get('workspace_id') != focused_ws_id:
+        continue
+    pos = w['layout'].get('pos_in_scrolling_layout')
+    if pos is None:
+        continue
+    col_idx = pos[0]
+    if col_idx not in cols:
+        cols[col_idx] = w['id']
+
+for win_id in sorted(cols.values()):
+    subprocess.run(['niri', 'msg', 'action', 'focus-window', '--id', str(win_id)])
+    subprocess.run(['niri', 'msg', 'action', 'set-column-width', width])
+
+# Restore original focus
+if focused_win_id:
+    subprocess.run(['niri', 'msg', 'action', 'focus-window', '--id', str(focused_win_id)])
+EOF
+}
+
+if [ -f "$STATE_FILE" ]; then
+    # EXITING TILE MODE → RESTORE DEFAULTS
+    
+    # 1. Restore wallpaper
+    RESTORE_WALLPAPER=$(cat "$WALLPAPER_FILE" 2>/dev/null)
+    if [[ -z "$RESTORE_WALLPAPER" ]]; then
+        RESTORE_WALLPAPER="$DEFAULT_WALLPAPER"
+    fi
+    pkill swaybg
+    swaybg -i "$RESTORE_WALLPAPER" -m fill &
+
+    # 2. Apply config changes
+    sed -i --follow-symlinks 's/^\(\s*\)center-focused-column "never"/\1center-focused-column "always"/' "$CONFIG"
+    sed -i --follow-symlinks 's/opacity 0\.9$/opacity 0.75/' "$CONFIG"
+    sed -i --follow-symlinks 's/^\(\s*gaps \)2/\16/' "$CONFIG"
+    sed -i --follow-symlinks 's/width 0 \/\/ 1 current/width 1 \/\/ 1 current/' "$CONFIG"
+    sed -i --follow-symlinks 's/width 2 \/\/ 3 current/width 3 \/\/ 3 current/' "$CONFIG"
+
+    # 3. Restore column widths
+    resize_columns "76.666667%"
+
+    rm -f "$STATE_FILE"
+else
+    # ENTERING TILE MODE
+    
+    # 1. Save wallpaper and go black
+    CURRENT_WALLPAPER=$(grep -oP '(?<=spawn-at-startup "swaybg" "-i" ")[^"]+' "$CONFIG")
+    if [[ -z "$CURRENT_WALLPAPER" ]]; then
+        CURRENT_WALLPAPER="$DEFAULT_WALLPAPER"
+    fi
+    echo "$CURRENT_WALLPAPER" > "$WALLPAPER_FILE"
+    pkill swaybg
+    swaybg -c "#000000" &
+
+    # 2. Apply config changes
+    sed -i --follow-symlinks 's/^\(\s*\)center-focused-column "always"/\1center-focused-column "never"/' "$CONFIG"
+    sed -i --follow-symlinks 's/opacity 0\.75$/opacity 0.9/' "$CONFIG"
+    sed -i --follow-symlinks 's/^\(\s*gaps \)6/\12/' "$CONFIG"
+    sed -i --follow-symlinks 's/width 1 \/\/ 1 current/width 0 \/\/ 1 current/' "$CONFIG"
+    sed -i --follow-symlinks 's/width 3 \/\/ 3 current/width 2 \/\/ 3 current/' "$CONFIG"
+
+    # 3. Set ALL columns on workspace to 50%
+    resize_columns "50%"
+
+    touch "$STATE_FILE"
+fi

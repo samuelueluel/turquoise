@@ -1,0 +1,26 @@
+# CLI tools managed via Homebrew
+# Install with: brew bundle --global
+
+cask "claude-code@latest"
+brew "gemini-cli"
+
+brew "atuin"       # shell history with SQLite backend and Ctrl+R search
+brew "bat"         # cat with syntax highlighting
+brew "dust"        # du replacement with visual tree
+brew "duf"         # df replacement with visual output
+brew "eza"         # ls replacement with colors/icons/git info
+brew "fastfetch"   # system info fetcher
+brew "fd"          # find replacement
+brew "gh"          # GitHub CLI
+brew "git-delta"   # syntax-highlighted git diff pager
+brew "glances"     # system monitor
+brew "glow"        # Markdown renderer for the terminal
+brew "lazygit"     # TUI for git
+brew "ripgrep"     # grep replacement
+brew "television"  # fuzzy finder TUI with live previews
+brew "tealdeer"    # simplified man pages (fast Rust tldr client)
+brew "yq"          # jq-style processor for YAML/TOML/XML
+brew "ouch"        # archive tool (zip, tar, gz, zst, etc.)
+brew "pet"         # CLI snippet manager with fzf search
+brew "yt-dlp"      # video downloader
+brew "zoxide"      # smart cd replacement

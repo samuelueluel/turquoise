@@ -1,0 +1,53 @@
+#!/bin/bash
+# Toggles between two Niri display modes:
+#   Default:    real wallpaper + center-focused-column always + dim unfocused to 0.75 + gaps 6 + focus-ring width 1
+#   Focus mode: solid black wallpaper + center-focused-column never + dim unfocused to 0.9 + gaps 2 + focus-ring width 0
+#
+# State is detected by center-focused-column value in config.kdl.
+
+CONFIG="$HOME/.config/niri/config.kdl"
+STATE_FILE="$HOME/.cache/niri-mode-toggle-wallpaper"
+DEFAULT_WALLPAPER="/var/home/samuel/Pictures/Wallpapers/joonyeop-baek-GK6qXiHm6Iw-unsplash.jpg"
+
+if grep -qP '^\s*center-focused-column "never"' "$CONFIG"; then
+    # Currently in focus mode → restore defaults
+
+    # 1. Restore previous wallpaper
+    RESTORE_WALLPAPER=$(cat "$STATE_FILE" 2>/dev/null)
+    if [[ -z "$RESTORE_WALLPAPER" ]]; then
+        RESTORE_WALLPAPER="$DEFAULT_WALLPAPER"
+    fi
+    
+    pkill swaybg
+    swaybg -i "$RESTORE_WALLPAPER" -m fill &
+
+    # 2. Apply niri config changes
+    sed -i --follow-symlinks 's/^\(\s*\)center-focused-column "never"/\1center-focused-column "always"/' "$CONFIG"
+    sed -i --follow-symlinks 's/opacity 0\.9$/opacity 0.75/' "$CONFIG"
+    sed -i --follow-symlinks 's/^\(\s*gaps \)2/\16/' "$CONFIG"
+    sed -i --follow-symlinks 's/width 0 \/\/ 1 current/width 1 \/\/ 1 current/' "$CONFIG"
+    
+    # 3. Trigger immediate resize for current column
+    niri msg action set-column-width "76.666667%"
+else
+    # Currently in default mode → enter focus mode
+
+    # 1. Save current wallpaper and change to black
+    CURRENT_WALLPAPER=$(grep -oP '(?<=spawn-at-startup "swaybg" "-i" ")[^"]+' "$CONFIG")
+    if [[ -z "$CURRENT_WALLPAPER" ]]; then
+        CURRENT_WALLPAPER="$DEFAULT_WALLPAPER"
+    fi
+    echo "$CURRENT_WALLPAPER" > "$STATE_FILE"
+    
+    pkill swaybg
+    swaybg -c "#000000" &
+
+    # 2. Apply niri config changes
+    sed -i --follow-symlinks 's/^\(\s*\)center-focused-column "always"/\1center-focused-column "never"/' "$CONFIG"
+    sed -i --follow-symlinks 's/opacity 0\.75$/opacity 0.9/' "$CONFIG"
+    sed -i --follow-symlinks 's/^\(\s*gaps \)6/\12/' "$CONFIG"
+    sed -i --follow-symlinks 's/width 1 \/\/ 1 current/width 0 \/\/ 1 current/' "$CONFIG"
+    
+    # 3. Trigger immediate resize for current column
+    niri msg action set-column-width "100%"
+fi

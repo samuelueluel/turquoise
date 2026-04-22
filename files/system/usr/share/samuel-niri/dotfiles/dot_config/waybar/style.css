@@ -1,0 +1,186 @@
+/* Noctalia color palette */
+@define-color bg       #A14763;
+@define-color bg-dark  #614859;
+@define-color fg       #B1B9F9;
+@define-color accent   #00B6C2;
+@define-color peach   #D0A7AF;
+@define-color gold     #FFA726;
+@define-color green    #2EC677;
+@define-color black    #000000;
+
+* {
+    font-family: "IBM Plex Sans", "sans-serif";
+    font-size: 11px;
+    font-weight: 900;
+    min-height: 0;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0;
+}
+
+window#waybar {
+    background-color: @bg;
+    color: @fg;
+    min-height: 18px;
+}
+
+/* ── Workspaces ──────────────────────────────────────────────────────────── */
+
+#workspaces button {
+    padding: 0;
+    margin: 3px 4px 3px 0;
+    color: @black;
+    background-color: @peach;
+    border-radius: 3px;
+    min-height: 12px;
+    min-width: 27px;
+    font-size: 20px;
+    font-weight: 900;
+    text-shadow: 0 0 1px @black;
+    transition: all 0.15s ease-out;
+}
+
+#workspaces button:last-child {
+    margin-right: 0;
+}
+
+#workspaces button.active {
+    color: @black;
+    background-color: @accent;
+    text-shadow: 0 0 1px @black;
+    border-radius: 0;
+    min-height: 18px;
+    margin: 0 4px 0 0;
+}
+
+#workspaces button:first-child,
+#workspaces button.active:first-child {
+    margin-left: 4px;
+}
+
+#workspaces button.urgent {
+    color: #ff5555;
+}
+
+/* ── Taskbar (Icons) ─────────────────────────────────────────────────────── */
+
+.niri-window-buttons,
+#cffi-niri_window_buttons {
+    padding: 0;
+}
+
+/* Base style for buttons */
+.niri-window-buttons button,
+#cffi-niri_window_buttons button {
+    padding: 0;
+    margin: 0;
+    border-radius: 0;
+    background: transparent;
+    min-width: 0;
+    min-height: 18px;
+}
+
+/* Hide labels and indicators */
+.niri-window-buttons label,
+.niri-window-buttons .audio-indicator,
+#cffi-niri_window_buttons label,
+#cffi-niri_window_buttons .audio-indicator {
+    font-size: 0;
+    min-width: 0;
+    min-height: 0;
+    padding: 0;
+    margin: 0;
+}
+
+/* Image resets */
+.niri-window-buttons image,
+#cffi-niri_window_buttons image {
+    margin: 0;
+    padding: 0;
+}
+
+/* Highlight for the focused window */
+.niri-window-buttons button.focused,
+#cffi-niri_window_buttons button.focused {
+    background: @accent;
+}
+
+.niri-window-buttons button:hover,
+#cffi-niri_window_buttons button:hover {
+    background: @bg-dark;
+}
+
+/* ── Window title ────────────────────────────────────────────────────────── */
+
+#window {
+    color: @fg;
+    padding: 0 4px;
+    font-style: italic;
+    min-height: 0;
+}
+
+/* ── Clock ───────────────────────────────────────────────────────────────── */
+
+#clock {
+    color: @peach;
+    padding: 0 4px;
+    margin: 0;
+    min-height: 0;
+}
+
+/* ── Right modules shared style ──────────────────────────────────────────── */
+
+#mpris,
+#pulseaudio,
+#power-profiles-daemon,
+#battery,
+#memory,
+#temperature,
+#custom-swaync {
+    padding: 0 3px;
+    margin: 0;
+    color: @peach;
+    min-height: 0;
+}
+
+/* ── Module-specific ─────────────────────────────────────────────────────── */
+
+#mpris {
+    color: @green;
+}
+
+#pulseaudio {
+    color: @peach;
+}
+
+#pulseaudio.muted {
+    color: @gold;
+}
+
+#power-profiles-daemon {
+    font-size: 9px;
+    padding-right: 0px;
+}
+
+#battery {
+    color: @peach;
+    padding-left: 0px;
+}
+
+#custom-swaync {
+    color: transparent;
+}
+
+#custom-swaync.notification,
+#custom-swaync.dnd-notification,
+#custom-swaync.inhibited-notification,
+#custom-swaync.dnd-inhibited-notification {
+    color: @gold;
+}
+
+@keyframes blink {
+    to {
+        color: @bg;
+    }
+}

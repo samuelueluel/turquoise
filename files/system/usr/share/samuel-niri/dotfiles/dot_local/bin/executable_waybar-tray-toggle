@@ -1,0 +1,60 @@
+#!/bin/bash
+# Toggles between default waybar and tray-enabled waybar
+
+TRAY_CONFIG="$HOME/.config/waybar/config-tray.jsonc"
+STATE_FILE="$HOME/.cache/waybar-tray-enabled"
+WAYBAR="/usr/bin/waybar"
+LOCK_DIR="/tmp/waybar-toggle.lockdir"
+LOG="/tmp/waybar-toggle.log"
+
+# Log everything to file for debugging
+exec > "$LOG" 2>&1
+set -x
+
+# 1. Use mkdir for a simple, background-safe lock
+if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    echo "Lock exists, exiting."
+    exit 1
+fi
+
+# Ensure lock is removed on exit
+trap 'rmdir "$LOCK_DIR"' EXIT
+
+echo "Toggle script started. State file: $STATE_FILE"
+
+# 2. Toggle the state file
+if [ -f "$STATE_FILE" ]; then
+    echo "Tray is currently ENABLED. Switching to DEFAULT..."
+    rm "$STATE_FILE"
+    CONFIG_ARGS=""
+else
+    echo "Tray is currently DISABLED. Switching to TRAY..."
+    touch "$STATE_FILE"
+    CONFIG_ARGS="-c $TRAY_CONFIG"
+fi
+
+# 3. Aggressively kill ALL waybar instances
+pkill -x waybar
+    
+# 4. Wait for them to actually DIE (shorter timeout)
+MAX_WAIT=10
+COUNT=0
+while pgrep -x waybar > /dev/null && [ $COUNT -lt $MAX_WAIT ]; do
+    sleep 0.1
+    ((COUNT++))
+done
+
+# 5. Final blow if it's still alive
+if pgrep -x waybar > /dev/null; then
+    pkill -9 -x waybar
+    sleep 0.1
+fi
+
+# 6. Start the single new instance
+echo "Starting waybar with args: $CONFIG_ARGS"
+# We use nohup and redirect to /dev/null to ensure it detaches completely
+nohup "$WAYBAR" $CONFIG_ARGS > /dev/null 2>&1 &
+    
+echo "Waybar started. PID: $!"
+disown
+echo "Toggle script finished."

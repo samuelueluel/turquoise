@@ -1,0 +1,6 @@
+#!/bin/bash
+if wl-paste --list-types | grep -q "^image/"; then
+    wl-paste --type "$(wl-paste --list-types | grep "^image/" | head -1)" | cliphist store
+else
+    wl-paste | cliphist store
+fi

@@ -1,0 +1,10 @@
+#!/bin/bash
+# niri-nav: A wrapper script to perform a niri action and show the minimap
+ACTION=$1
+
+# Signal the running daemon directly (avoids Python startup overhead)
+pid=$(cat "${XDG_RUNTIME_DIR:-/tmp}/niri-minimap.pid" 2>/dev/null)
+[ -n "$pid" ] && kill -SIGUSR2 "$pid" 2>/dev/null
+
+# Perform the niri action
+niri msg action "$ACTION"

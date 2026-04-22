@@ -1,0 +1,14 @@
+{
+  "include": ["~/.config/waybar/config.jsonc"],
+  "modules-right": [
+    "tray",
+    "custom/swaync",
+    "pulseaudio",
+    "battery",
+    "clock",
+  ],
+  "tray": {
+    "icon-size": 14,
+    "spacing": 10
+  }
+}

@@ -1,0 +1,9 @@
+[Unit]
+Description=Wipe cliphist clipboard history on boot
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/cliphist wipe
+
+[Install]
+WantedBy=default.target

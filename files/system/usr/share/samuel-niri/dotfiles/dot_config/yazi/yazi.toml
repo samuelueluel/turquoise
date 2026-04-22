@@ -1,0 +1,29 @@
+[opener]
+edit = [
+  { run = 'zed "$@"', desc = "Zed", orphan = true },
+]
+view_image = [
+  { run = 'swayimg "$@"', desc = "swayimg", orphan = true },
+]
+view_pdf = [
+  { run = 'flatpak run org.kde.okular "$@"', desc = "Okular", orphan = true },
+]
+open = [
+  { run = 'xdg-open "$1"', desc = "xdg-open", orphan = true },
+]
+
+[open]
+prepend_rules = [
+  { name = "*.md", use = "edit" },
+  { mime = "image/*", use = "view_image" },
+  { name = "*.pdf", use = "view_pdf" },
+  { mime = "application/pdf", use = "view_pdf" },
+  { mime = "text/*",        use = "edit" },
+  { mime = "application/json",        use = "edit" },
+  { mime = "application/toml",        use = "edit" },
+  { mime = "application/xml",         use = "edit" },
+  { mime = "application/javascript",  use = "edit" },
+  { mime = "application/x-sh",        use = "edit" },
+  { mime = "inode/x-empty",           use = "edit" },
+  { mime = "*", use = "open" },
+]

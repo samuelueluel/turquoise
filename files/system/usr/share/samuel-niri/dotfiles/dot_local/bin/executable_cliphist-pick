@@ -1,0 +1,10 @@
+#!/bin/bash
+LEFT_WIDTH=42  # digits + tab + 30-char preview + fzf padding
+COLS=$(tput cols 2>/dev/null || echo 180)
+RIGHT_WIDTH=$((COLS - LEFT_WIDTH))
+
+cliphist list | fzf --reverse --border=none --no-separator --no-scrollbar --info=inline \
+    --color='preview-border:#D0A7AF' \
+    --preview 'cliphist-preview {}' \
+    --preview-window="right:${RIGHT_WIDTH}:border-left:wrap" \
+    | cliphist decode | wl-copy

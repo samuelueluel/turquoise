@@ -1,0 +1,759 @@
+#!/usr/bin/env python3
+"""
+niri-minimap: A live symbolic spatial minimap overlay for Niri.
+
+Shows workspaces stacked vertically with windows represented by their app icons,
+arranged according to their column/tile positions. The focused window gets a
+highlight border that updates in real time as you change focus.
+
+Toggle on/off with the same keybind. Does NOT steal keyboard focus, so you can
+use Mod+WASD to navigate while the minimap is visible.
+
+See # --- Configuration --- for aesthetic options.
+
+Must pkill -f niri-minimap for changes to take hold.
+"""
+
+import ctypes.util
+import json
+import os
+import signal
+import subprocess
+import sys
+import threading
+from collections import defaultdict
+
+# --- Toggle: kill existing instance if running ---
+PID_FILE = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "niri-minimap.pid")
+
+
+def _is_minimap_pid(pid):
+    """Return True only if pid belongs to a niri-minimap process."""
+    try:
+        cmdline = open(f"/proc/{pid}/cmdline").read()
+        return "niri-minimap" in cmdline
+    except OSError:
+        return False
+
+
+def check_toggle():
+    """If another instance is running, signal it based on args and exit. Otherwise write our PID."""
+    if os.path.exists(PID_FILE):
+        try:
+            with open(PID_FILE) as f:
+                old_pid = int(f.read().strip())
+            os.kill(old_pid, 0)
+
+            if not _is_minimap_pid(old_pid):
+                # Stale PID reused by an unrelated process — ignore and start fresh
+                raise ProcessLookupError
+
+            # Decide what signal to send
+            sig = signal.SIGUSR1  # default: toggle
+            if len(sys.argv) > 1:
+                if sys.argv[1] == "show":
+                    sig = signal.SIGUSR2
+                elif sys.argv[1] == "hide":
+                    sig = signal.SIGHUP
+
+            os.kill(old_pid, sig)
+            sys.exit(0)
+        except (ProcessLookupError, ValueError):
+            pass
+        except PermissionError:
+            pass
+
+    with open(PID_FILE, "w") as f:
+        f.write(str(os.getpid()))
+
+
+def cleanup_pid():
+    try:
+        os.remove(PID_FILE)
+    except FileNotFoundError:
+        pass
+
+
+# --- Toggle check FIRST (so toggle-off is near-instant, no extra work) ---
+# Only run on the first exec (before LD_PRELOAD re-exec), since execvp
+# preserves PID and we'd find our own PID in the file.
+_LAYER_SO = ctypes.util.find_library("gtk4-layer-shell")
+if not _LAYER_SO:
+    # Fallback paths for systems where find_library fails
+    for p in ["/usr/lib64/libgtk4-layer-shell.so.0", "/usr/lib/libgtk4-layer-shell.so"]:
+        if os.path.exists(p):
+            _LAYER_SO = p
+            break
+
+if _LAYER_SO and _LAYER_SO not in os.environ.get("LD_PRELOAD", ""):
+    check_toggle()
+    os.environ["LD_PRELOAD"] = _LAYER_SO
+    os.execvp(sys.executable, [sys.executable] + sys.argv)
+
+signal.signal(signal.SIGTERM, lambda *_: (cleanup_pid(), sys.exit(0)))
+
+# --- Early parallel work: start event stream + desktop scan BEFORE GTK loads ---
+# These run concurrently with the ~80ms GTK import below.
+_early_event_proc = subprocess.Popen(
+    ["niri", "msg", "--json", "event-stream"],
+    stdout=subprocess.PIPE,
+    stderr=subprocess.DEVNULL,
+)
+
+
+def _scan_desktop_icons():
+    dirs = [
+        os.path.expanduser("~/.local/share/applications"),
+        "/usr/share/applications",
+        "/var/lib/flatpak/exports/share/applications",
+    ]
+    flatpak_user = os.path.expanduser("~/.var/app")
+    if os.path.isdir(flatpak_user):
+        for app in os.listdir(flatpak_user):
+            candidate = os.path.join(flatpak_user, app, "export/share/applications")
+            if os.path.isdir(candidate):
+                dirs.append(candidate)
+    icon_map = {}
+    for d in dirs:
+        if not os.path.isdir(d):
+            continue
+        for fname in os.listdir(d):
+            if not fname.endswith(".desktop"):
+                continue
+            app_id = fname[:-8]
+            if app_id in icon_map:
+                continue
+            path = os.path.join(d, fname)
+            try:
+                with open(path) as fh:
+                    for line in fh:
+                        if line.startswith("Icon="):
+                            icon_map[app_id] = line[5:].strip()
+                            break
+            except OSError:
+                pass
+    return icon_map
+
+
+_desktop_scan_thread = threading.Thread(target=lambda: None, daemon=True)
+_desktop_icon_result = [None]
+
+
+def _scan_worker():
+    _desktop_icon_result[0] = _scan_desktop_icons()
+
+
+_desktop_scan_thread = threading.Thread(target=_scan_worker, daemon=True)
+_desktop_scan_thread.start()
+
+# gtk4-layer-shell must be loaded before libwayland.
+import gi
+
+gi.require_version("Gdk", "4.0")
+gi.require_version("Gtk", "4.0")
+gi.require_version("Gtk4LayerShell", "1.0")
+from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell
+
+# --- Configuration ---
+# Layout
+MINIMAP_WIDTH = (
+    0.95  # default width as a fraction of monitor width (expands if content needs more)
+)
+ICON_SIZE = 50  # px, app icon size, 48
+CELL_PAD = 8  # px, outer margin around each tile (space outside the ring)
+TILE_PAD = 6  # px, inner padding between icon and the ring
+COL_SPACING = 12  # px, horizontal gap between columns
+TILE_SPACING = 4  # px, vertical gap between tiles in a column
+WS_SPACING = 16  # px, vertical gap between workspaces
+
+# Borders & radii
+BORDER_WIDTH = 6  # px, highlight ring around focused/active tiles
+OUTER_BORDER_WIDTH = 2  # px, border around the whole minimap panel
+OUTER_BORDER_RADIUS = 12  # px, corner rounding of the outer panel
+TILE_BORDER_RADIUS = 6  # px, corner rounding of tiles and columns
+FOCUS_RING_CIRCLE = (
+    False  # True = circle focus ring (border-radius 50%), False = rounded square
+)
+
+# Colors: ("#RRGGBB", alpha) — alpha is 0.0 (transparent) to 1.0 (opaque)
+FOCUS_RING_COLOR = ("#00B6C2", 1.00)  # focused window border ring (turquoise)
+FOCUS_FILL_COLOR = ("#00B6C2", 0.70)  # focused window background fill (turquoise)
+NORMAL_COLOR = ("#595966", 1.00)  # reserved / unused
+BG_COLOR = ("#000000", 0.80)  # outer panel background, old #1F1F26
+WS_BG_COLOR = ("#2E2E38", 0.85)  # workspace background
+OUTER_BORDER_COLOR = ("#574150", 1.00)  # outer panel border
+COLUMN_COLOR = ("#574150", 1.00)  # non-spine column background
+SPINE_COLOR = ("#A14763", 1.00)  # spine column background
+WS_RING_COLOR = ("#00B6C2", 1.00)  # focused-workspace ring
+
+
+def _c(color):
+    """Convert a ("#RRGGBB", alpha) color tuple to a CSS rgb()/rgba() string."""
+    hex_str, alpha = color
+    h = hex_str.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    if alpha >= 1.0:
+        return f"rgb({r}, {g}, {b})"
+    return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+# --- .desktop icon cache (pre-scanned in background thread above) ---
+
+
+def get_desktop_icon_map():
+    _desktop_scan_thread.join()  # blocks only if scan isn't done yet (~9ms)
+    return _desktop_icon_result[0]
+
+
+def lookup_icon_name(app_id, icon_theme):
+    """Look up icon for an app_id, consulting .desktop files first."""
+    if not app_id:
+        return "application-x-executable"
+
+    desktop_map = get_desktop_icon_map()
+
+    # Check .desktop file for this app_id
+    if app_id in desktop_map:
+        icon = desktop_map[app_id]
+        if os.path.isabs(icon):
+            # Absolute path — use it directly (handled by Gtk.Image.new_from_file)
+            return icon
+        if icon_theme.has_icon(icon):
+            return icon
+
+    # Fallback: try app_id directly as icon name
+    if icon_theme.has_icon(app_id):
+        return app_id
+    lower = app_id.lower()
+    if icon_theme.has_icon(lower):
+        return lower
+    if "." in app_id:
+        short = app_id.rsplit(".", 1)[-1].lower()
+        if icon_theme.has_icon(short):
+            return short
+
+    return "application-x-executable"
+
+
+def parse_state(workspaces_raw, windows_raw):
+    """Build structured workspace model from raw JSON data."""
+    ws_by_id = {}
+    for ws in workspaces_raw:
+        ws_by_id[ws["id"]] = {
+            "id": ws["id"],
+            "idx": ws["idx"],
+            "name": ws.get("name"),
+            "is_focused": ws["is_focused"],
+            "is_active": ws["is_active"],
+            "active_window_id": ws.get("active_window_id"),
+            "columns": defaultdict(list),
+        }
+
+    # Index windows by id for active-window lookups
+    win_by_id = {}
+    for win in windows_raw:
+        win_by_id[win["id"]] = win
+        ws_id = win.get("workspace_id")
+        if ws_id is None or ws_id not in ws_by_id:
+            continue
+        pos = win["layout"].get("pos_in_scrolling_layout")
+        if pos is None:
+            continue
+        col_idx, tile_idx = pos
+        ws_by_id[ws_id]["columns"][col_idx].append(
+            {
+                "id": win["id"],
+                "app_id": win.get("app_id", ""),
+                "title": win.get("title", ""),
+                "is_focused": win["is_focused"],
+                "col_idx": col_idx,
+                "tile_idx": tile_idx,
+            }
+        )
+
+    for ws in ws_by_id.values():
+        for col_idx in ws["columns"]:
+            ws["columns"][col_idx].sort(key=lambda w: w["tile_idx"])
+
+    # Compute each workspace's active column position (0-based index among
+    # its sorted columns). This is the column that Niri will focus when you
+    # switch to that workspace.
+    for ws in ws_by_id.values():
+        active_col_pos = 0  # default: leftmost
+        awid = ws["active_window_id"]
+        if awid and awid in win_by_id:
+            pos = win_by_id[awid]["layout"].get("pos_in_scrolling_layout")
+            if pos:
+                target_col_idx = pos[0]
+                sorted_col_indices = sorted(ws["columns"].keys())
+                if target_col_idx in sorted_col_indices:
+                    active_col_pos = sorted_col_indices.index(target_col_idx)
+        ws["active_col_pos"] = active_col_pos
+
+    result = sorted(ws_by_id.values(), key=lambda w: w["idx"])
+    result = [ws for ws in result if ws["columns"]]
+    return result
+
+
+class MinimapWindow(Gtk.Window):
+    def __init__(self, app):
+        super().__init__(application=app)
+        self.icon_theme = Gtk.IconTheme.get_for_display(Gdk.Display.get_default())
+
+        self.tile_widgets = {}  # win_id -> Gtk.Box
+
+        Gtk4LayerShell.init_for_window(self)
+        Gtk4LayerShell.set_layer(self, Gtk4LayerShell.Layer.OVERLAY)
+        Gtk4LayerShell.set_keyboard_mode(self, Gtk4LayerShell.KeyboardMode.NONE)
+        Gtk4LayerShell.set_namespace(self, "niri-minimap")
+
+        self.set_decorated(False)
+
+        self.outer = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
+        self.outer.set_halign(Gtk.Align.CENTER)
+        self.outer.set_valign(Gtk.Align.CENTER)
+        self.outer.add_css_class("minimap-outer")
+
+        display = Gdk.Display.get_default()
+        monitors = display.get_monitors()
+        if monitors and monitors.get_n_items() > 0:
+            monitor = monitors.get_item(0)
+            geometry = monitor.get_geometry()
+            min_width = int(geometry.width * MINIMAP_WIDTH)
+            self.outer.set_size_request(min_width, -1)
+
+        self.frame = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=WS_SPACING)
+        self.frame.set_margin_top(16)
+        self.frame.set_margin_bottom(16)
+        self.frame.set_margin_start(20)
+        self.frame.set_margin_end(20)
+        self.outer.append(self.frame)
+        self.set_child(self.outer)
+
+    def rebuild(self, workspaces):
+        """Tear down and rebuild all widgets from fresh state."""
+        self.tile_widgets.clear()
+
+        while True:
+            child = self.frame.get_first_child()
+            if child is None:
+                break
+            self.frame.remove(child)
+
+        if not workspaces:
+            return
+
+        # To keep the "spine" (active column) at a fixed screen position,
+        # we build a symmetrical grid where the spine is always at the center.
+        # This way, when the grid is centered on screen, the spine stays put
+        # even if one workspace's focus shifts or content grows.
+
+        # l_max: max columns to the left of the spine
+        # r_max: max columns to the right of the spine
+        l_max = 0
+        r_max = 0
+        for ws in workspaces:
+            acp = ws["active_col_pos"]
+            n_cols = len(ws["columns"])
+            l_max = max(l_max, acp)
+            r_max = max(r_max, n_cols - 1 - acp)
+
+        # M is the distance from the spine to the edge of the symmetrical grid
+        m = max(l_max, r_max)
+        grid_width = 2 * m + 1
+        spine_index = m
+
+        grid = Gtk.Grid()
+        grid.set_halign(Gtk.Align.CENTER)
+        grid.set_valign(Gtk.Align.CENTER)
+        grid.set_column_spacing(COL_SPACING)
+        grid.set_row_spacing(4)
+        # Homogeneous columns ensure the grid center aligns with the spine
+        grid.set_column_homogeneous(True)
+
+        grid_row = 0
+        for ws_i, ws in enumerate(workspaces):
+            if ws_i > 0:
+                spacer = Gtk.Box()
+                spacer.set_size_request(1, WS_SPACING)
+                grid.attach(spacer, 0, grid_row, grid_width, 1)
+                grid_row += 1
+
+            # Offset so the active column is at spine_index
+            acp = ws["active_col_pos"]
+            start_col = spine_index - acp
+
+            for i, (col_idx, tiles) in enumerate(sorted(ws["columns"].items())):
+                col_box = Gtk.Box(
+                    orientation=Gtk.Orientation.VERTICAL,
+                    spacing=TILE_SPACING,
+                )
+                col_box.set_valign(Gtk.Align.CENTER)
+                if start_col + i == spine_index:
+                    col_box.add_css_class("minimap-spine-column")
+                else:
+                    col_box.add_css_class("minimap-column")
+
+                for tile in tiles:
+                    tile_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
+                    tile_box.set_halign(Gtk.Align.CENTER)
+                    tile_box.set_valign(Gtk.Align.CENTER)
+                    tile_box.set_margin_top(CELL_PAD)
+                    tile_box.set_margin_bottom(CELL_PAD)
+                    tile_box.set_margin_start(CELL_PAD)
+                    tile_box.set_margin_end(CELL_PAD)
+
+                    icon_name = lookup_icon_name(tile["app_id"], self.icon_theme)
+                    if os.path.isabs(icon_name):
+                        icon = Gtk.Image.new_from_file(icon_name)
+                    else:
+                        icon = Gtk.Image.new_from_icon_name(icon_name)
+                    icon.set_pixel_size(ICON_SIZE)
+                    icon.set_tooltip_text(
+                        tile["title"][:60] if tile["title"] else tile["app_id"]
+                    )
+
+                    in_spine = start_col + i == spine_index
+                    if tile["is_focused"]:
+                        tile_box.add_css_class("minimap-tile-focused")
+                    else:
+                        if ws["is_focused"]:
+                            tile_box.add_css_class("minimap-tile-workspace")
+                        elif in_spine:
+                            tile_box.add_css_class("minimap-tile-spine")
+                        else:
+                            tile_box.add_css_class("minimap-tile")
+
+                    tile_box.append(icon)
+                    col_box.append(tile_box)
+                    self.tile_widgets[tile["id"]] = (tile_box, in_spine, ws["id"])
+
+                grid.attach(col_box, start_col + i, grid_row, 1, 1)
+
+            grid_row += 1
+
+        # Add a dummy spacer to the first and last columns to ensure symmetry
+        # even if no workspace uses those columns.
+        if grid_width > 0:
+            for c in [0, grid_width - 1]:
+                spacer = Gtk.Box()
+                # 70 is the calculated width of a tile column (ICON_SIZE+2*CELL_PAD+2*BORDER_WIDTH+2*padding)
+                spacer.set_size_request(70, 1)
+                grid.attach(spacer, c, grid_row, 1, 1)
+
+        self.frame.append(grid)
+
+    def update_focus(self, focused_window_id, focused_ws_id):
+        """Update CSS classes to reflect the newly focused window/workspace."""
+        for win_id, (tile_box, in_spine, ws_id) in self.tile_widgets.items():
+            tile_box.remove_css_class("minimap-tile")
+            tile_box.remove_css_class("minimap-tile-spine")
+            tile_box.remove_css_class("minimap-tile-workspace")
+            tile_box.remove_css_class("minimap-tile-focused")
+
+            if win_id == focused_window_id:
+                tile_box.add_css_class("minimap-tile-focused")
+            else:
+                if ws_id == focused_ws_id:
+                    tile_box.add_css_class("minimap-tile-workspace")
+                elif in_spine:
+                    tile_box.add_css_class("minimap-tile-spine")
+                else:
+                    tile_box.add_css_class("minimap-tile")
+
+
+class EventStreamReader:
+    """Reads niri event-stream in a background thread and dispatches to GTK."""
+
+    def __init__(self, callback):
+        self.callback = callback
+        self._proc = None
+        self._thread = None
+
+    def start(self):
+        global _early_event_proc
+        # Reuse the process started at module load (saves ~60ms)
+        self._proc = _early_event_proc
+        _early_event_proc = None
+        self._thread = threading.Thread(target=self._read_loop, daemon=True)
+        self._thread.start()
+
+    def stop(self):
+        if self._proc:
+            self._proc.terminate()
+            self._proc = None
+
+    def _read_loop(self):
+        for line in self._proc.stdout:
+            try:
+                event = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            GLib.idle_add(self.callback, event)
+
+
+class MinimapApp(Gtk.Application):
+    def __init__(self):
+        super().__init__(application_id="dev.niri.minimap")
+        self._win = None
+        self._event_reader = None
+        self._windows = {}
+        self._workspaces = {}
+        self._focused_window_id = None
+        self._focused_ws_id = None
+        self._got_initial_windows = False
+        self._got_initial_workspaces = False
+        self._autohide_timer_id = None
+
+    def do_activate(self):
+        self.hold()  # Keep app running even if the window is hidden
+
+        css_provider = Gtk.CssProvider()
+        css_provider.load_from_string(CSS)
+        Gtk.StyleContext.add_provider_for_display(
+            Gdk.Display.get_default(),
+            css_provider,
+            Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION,
+        )
+
+        self._win = MinimapWindow(self)
+        self._win.set_hide_on_close(True)
+
+        GLib.unix_signal_add(
+            GLib.PRIORITY_DEFAULT, signal.SIGUSR1, self._on_toggle_signal
+        )
+        GLib.unix_signal_add(
+            GLib.PRIORITY_DEFAULT, signal.SIGUSR2, self._on_show_signal
+        )
+        GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGHUP, self._on_hide_signal)
+
+        # Start event stream — initial dump provides both windows and workspaces
+        self._event_reader = EventStreamReader(callback=self._on_event)
+        self._event_reader.start()
+
+        self._win.present()
+        GLib.timeout_add(250, self._poll_state)
+
+    def _poll_state(self):
+        if self._win and self._win.get_visible():
+            self._refresh_state()
+        return True
+
+    def _refresh_state(self):
+        try:
+            ws_res = subprocess.run(
+                ["niri", "msg", "--json", "workspaces"], capture_output=True, text=True
+            )
+            win_res = subprocess.run(
+                ["niri", "msg", "--json", "windows"], capture_output=True, text=True
+            )
+            self._workspaces = {ws["id"]: ws for ws in json.loads(ws_res.stdout)}
+            self._windows = {w["id"]: w for w in json.loads(win_res.stdout)}
+            self._sync_ws_focus()
+            self._sync_focus_from_windows()
+            self._full_rebuild()
+        except Exception as e:
+            print(f"Error refreshing state: {e}", file=sys.stderr)
+
+    def _on_toggle_signal(self):
+        if self._win:
+            if self._win.get_visible():
+                self._win.set_visible(False)
+            else:
+                self._refresh_state()
+                self._win.present()
+        return True
+
+    def _on_show_signal(self):
+        # SIGUSR2 = "nudge": reset the autohide timer only if already visible.
+        # Used by WASD navigation keys — they should not open the minimap,
+        # only extend/start the close countdown when it's already up.
+        if self._win and self._win.get_visible():
+            self._reset_autohide_timer()
+        return True
+
+    def _on_hide_signal(self):
+        if self._win and self._win.get_visible():
+            self._win.set_visible(False)
+        return True
+
+    def _reset_autohide_timer(self):
+        if self._autohide_timer_id is not None:
+            GLib.source_remove(self._autohide_timer_id)
+        self._autohide_timer_id = GLib.timeout_add(550, self._autohide_cb)
+
+    def _autohide_cb(self):
+        self._autohide_timer_id = None
+        if self._win and self._win.get_visible():
+            self._win.set_visible(False)
+        return False
+
+    def do_shutdown(self):
+        if self._event_reader:
+            self._event_reader.stop()
+        cleanup_pid()
+        Gtk.Application.do_shutdown(self)
+
+    def _full_rebuild(self):
+        ws_list = parse_state(
+            list(self._workspaces.values()),
+            list(self._windows.values()),
+        )
+        self._win.rebuild(ws_list)
+
+    def _try_initial_build(self):
+        """Build UI once we have both initial dumps."""
+        if self._got_initial_windows and self._got_initial_workspaces:
+            self._full_rebuild()
+
+    def _on_event(self, event):
+        if "WindowsChanged" in event:
+            self._windows = {w["id"]: w for w in event["WindowsChanged"]["windows"]}
+            self._sync_focus_from_windows()
+            self._got_initial_windows = True
+            self._try_initial_build()
+
+        elif "WorkspacesChanged" in event:
+            self._workspaces = {
+                ws["id"]: ws for ws in event["WorkspacesChanged"]["workspaces"]
+            }
+            self._sync_ws_focus()
+            self._got_initial_workspaces = True
+            self._try_initial_build()
+
+        elif "WindowFocusChanged" in event:
+            new_id = event["WindowFocusChanged"].get("id")
+            self._focused_window_id = new_id
+            if new_id and new_id in self._windows:
+                self._focused_ws_id = self._windows[new_id].get("workspace_id")
+            self._win.update_focus(self._focused_window_id, self._focused_ws_id)
+
+        elif "WindowOpenedOrChanged" in event:
+            win = event["WindowOpenedOrChanged"]["window"]
+            self._windows[win["id"]] = win
+            if win.get("is_focused"):
+                self._focused_window_id = win["id"]
+                self._focused_ws_id = win.get("workspace_id")
+            self._full_rebuild()
+
+        elif "WindowClosed" in event:
+            wid = event["WindowClosed"]["id"]
+            self._windows.pop(wid, None)
+            if self._focused_window_id == wid:
+                self._focused_window_id = None
+            self._full_rebuild()
+
+        elif "WorkspaceActivated" in event:
+            ws_id = event["WorkspaceActivated"]["id"]
+            focused = event["WorkspaceActivated"].get("focused", False)
+            if focused:
+                self._focused_ws_id = ws_id
+            self._win.update_focus(self._focused_window_id, self._focused_ws_id)
+
+        elif "WorkspaceActiveWindowChanged" in event:
+            ws_id = event["WorkspaceActiveWindowChanged"]["workspace_id"]
+            awid = event["WorkspaceActiveWindowChanged"].get("active_window_id")
+            if ws_id in self._workspaces:
+                self._workspaces[ws_id]["active_window_id"] = awid
+            # Active column may have changed — rebuild to update alignment
+            self._full_rebuild()
+
+    def _sync_focus_from_windows(self):
+        self._focused_window_id = None
+        self._focused_ws_id = None
+        for w in self._windows.values():
+            if w.get("is_focused"):
+                self._focused_window_id = w["id"]
+                self._focused_ws_id = w.get("workspace_id")
+                break
+
+    def _sync_ws_focus(self):
+        for ws in self._workspaces.values():
+            if ws.get("is_focused"):
+                self._focused_ws_id = ws["id"]
+                break
+
+
+CSS = f"""
+window {{
+    background-color: transparent;
+}}
+
+.minimap-outer {{
+    background-color: {_c(BG_COLOR)};
+    border-radius: {OUTER_BORDER_RADIUS}px;
+    border: {OUTER_BORDER_WIDTH}px solid {_c(OUTER_BORDER_COLOR)};
+}}
+
+.minimap-workspace {{
+    background-color: {_c(WS_BG_COLOR)};
+    border-radius: 8px;
+    padding: 8px 12px;
+}}
+
+.minimap-ws-label {{
+    font-size: 13px;
+    font-weight: bold;
+    color: rgba(255, 255, 255, 0.6);
+}}
+
+.minimap-ws-focused {{
+    color: {_c(FOCUS_RING_COLOR)};
+}}
+
+.minimap-column {{
+    background-color: {_c(COLUMN_COLOR)};
+    border-radius: {TILE_BORDER_RADIUS}px;
+    padding: 2px;
+}}
+
+.minimap-spine-column {{
+    background-color: {_c(SPINE_COLOR)};
+    border-radius: {TILE_BORDER_RADIUS}px;
+    padding: 2px;
+}}
+
+.minimap-tile {{
+    border: {BORDER_WIDTH}px solid transparent;
+    border-radius: {TILE_BORDER_RADIUS}px;
+    padding: {TILE_PAD}px;
+}}
+
+.minimap-tile-spine {{
+    border: {BORDER_WIDTH}px solid transparent;
+    border-radius: {TILE_BORDER_RADIUS}px;
+    padding: {TILE_PAD}px;
+}}
+
+.minimap-tile-workspace {{
+    border: {BORDER_WIDTH}px solid {_c(WS_RING_COLOR)};
+    border-radius: {TILE_BORDER_RADIUS}px;
+    padding: {TILE_PAD}px;
+}}
+
+.minimap-tile-focused {{
+    border: {BORDER_WIDTH}px solid {_c(WS_RING_COLOR)};
+    border-radius: {"50%" if FOCUS_RING_CIRCLE else f"{TILE_BORDER_RADIUS}px"};
+    padding: {TILE_PAD}px;
+    background-color: {_c(FOCUS_FILL_COLOR)};
+}}
+
+.minimap-empty {{
+    color: rgba(255, 255, 255, 0.3);
+    font-style: italic;
+    font-size: 12px;
+}}
+"""
+
+
+def main():
+    # Toggle check and signal handler already set up at module level
+    app = MinimapApp()
+    try:
+        app.run([])
+    finally:
+        cleanup_pid()
+
+
+if __name__ == "__main__":
+    main()

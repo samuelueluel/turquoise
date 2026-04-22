@@ -1,0 +1,135 @@
+{
+  "layer": "top",
+  "position": "top",
+  "height": 18,
+  "spacing": 4,
+  "exclusive": true,
+
+  "modules-left": ["niri/workspaces"],
+  "modules-center": ["cffi/niri_window_buttons"],
+  "modules-right": [
+    "custom/swaync",
+    "temperature",
+    "memory",
+    "pulseaudio",
+    "power-profiles-daemon",
+    "battery",
+    "clock",
+  ],
+
+  // ── Left ──────────────────────────────────────────────────────────────────
+
+  "niri/workspaces": {
+    "all-outputs": false,
+    "format": "{index}",
+    "on-scroll-up": "niri msg action focus-workspace-up",
+    "on-scroll-down": "niri msg action focus-workspace-down"
+  },
+
+  "cffi/niri_window_buttons": {
+    "module_path": "/usr/lib/waybar/libniri_window_buttons.so",
+    "show_window_titles": false,
+    "icon_size": 18,
+    "icon_spacing": 0,
+    "min_button_width": 28,
+    "max_button_width": 28,
+    "audio_indicator": {
+      "icon_size": 0,
+      "icon_spacing": 0
+    },
+    "max_taskbar_width": 800,
+    "button_alignment": "center",
+    "only_current_workspace": true,
+    "on-click": "activate",
+    "on-click-right": "close"
+  },
+
+  // ── Center ────────────────────────────────────────────────────────────────
+
+  "clock": {
+    "format": "{:%a %b %e  %I:%M %p}",
+    "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+  },
+
+  // ── Right ─────────────────────────────────────────────────────────────────
+
+  "pulseaudio": {
+    "format": "{icon}  {volume}%",
+    "format-muted": "󰝟  {volume}%",
+    "format-icons": {
+      "headphone": "󰋋",
+      "hands-free": "󰋎",
+      "headset": "󰋎",
+      "phone": "󰏲",
+      "portable": "󰏲",
+      "car": "󰄄",
+      "default": ["󰕿", "󰖀", "󰕾"]
+    },
+    "on-click": "flatpak run com.saivert.pwvucontrol",
+    "on-click-right": "alacritty --title bluetuith -e bluetuith",
+    "on-scroll-up": "swayosd-client --output-volume raise",
+    "on-scroll-down": "swayosd-client --output-volume lower"
+  },
+
+  "battery": {
+    "states": {
+      "warning": 30,
+      "critical": 15
+    },
+    "format": "{capacity}%",
+    "format-charging": "{capacity}%",
+    "format-plugged": "{capacity}%",
+    "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"]
+  },
+
+  "power-profiles-daemon": {
+    "format": "{icon}",
+    "tooltip-format": "Power profile: {profile}\nDriver: {driver}",
+    "tooltip": true,
+    "format-icons": {
+      "default": "",
+      "performance": "",
+      "balanced": "",
+      "power-saver": ""
+    }
+  },
+
+  "custom/swaync": {
+    "tooltip": false,
+    "format": "{icon}",
+    "format-icons": {
+      "notification": "󰂚",
+      "none": "󰂜",
+      "dnd-notification": "󰂛",
+      "dnd-none": "󰪑",
+      "inhibited-notification": "󰂚",
+      "inhibited-none": "󰂜",
+      "dnd-inhibited-notification": "󰂛",
+      "dnd-inhibited-none": "󰪑",
+    },
+    "return-type": "json",
+    "exec-if": "which swaync-client",
+    "exec": "swaync-client -swb",
+    "on-click": "swaync-client -t -sw",
+    "on-click-right": "swaync-client -d -sw",
+    "escape": true,
+  },
+
+  "memory": {
+    "interval": 5,
+    "format": "󰍛  {percentage}%",
+    "states": {
+      "warning": 70,
+      "critical": 90
+    },
+    "tooltip": true,
+    "on-click-right": "alacritty --title nmtui -e nmtui"
+  },
+
+  "temperature": {
+    "critical-threshold": 75,
+    "format": "󰈸  {temperatureC}°C",
+    "tooltip": false,
+    "on-click-right": "alacritty --title htop -e htop"
+  }
+}

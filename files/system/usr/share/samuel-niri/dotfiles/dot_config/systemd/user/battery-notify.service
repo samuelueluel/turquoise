@@ -1,0 +1,10 @@
+[Unit]
+Description=Battery Low Notification Service
+
+[Service]
+ExecStart=%h/.local/bin/battery-notify.sh
+Restart=on-failure
+RestartSec=60
+
+[Install]
+WantedBy=default.target

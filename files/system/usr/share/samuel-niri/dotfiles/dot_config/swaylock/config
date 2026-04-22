@@ -1,0 +1,24 @@
+ignore-empty-password
+show-failed-attempts
+daemonize
+
+color=a14763
+bs-hl-color=00b6c2
+key-hl-color=00b6c2
+ring-color=614859
+ring-ver-color=00b6c2
+ring-wrong-color=ffa726
+inside-color=a1476300
+inside-ver-color=00b6c200
+inside-wrong-color=ffa72600
+line-color=00000000
+line-ver-color=00000000
+line-wrong-color=00000000
+text-color=b1b9f9
+text-ver-color=b1b9f9
+text-wrong-color=ffa726
+separator-color=00000000
+
+font=JetBrainsMono Nerd Font
+indicator-radius=80
+indicator-thickness=8
