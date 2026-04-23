@@ -10,7 +10,7 @@ default:
     @just --justfile /usr/share/samuel-niri/justfile --list --unsorted
 
 # Full setup — run everything in order
-setup: dirs chezmoi zsh-plugins zen claude-gemini brew flatpaks system
+setup: dirs chezmoi zsh-plugins zen brew flatpaks system
     update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
     @echo ""
     @echo "Done. Manual steps remaining:"
@@ -28,8 +28,6 @@ dirs:
         {{HOME}}/.local/share/zsh/plugins \
         {{HOME}}/.config \
         {{HOME}}/.gnome2/accels \
-        {{HOME}}/.claude \
-        {{HOME}}/.gemini \
         {{HOME}}/.ssh \
         {{HOME}}/.npm-global/bin
     chmod 700 {{HOME}}/.ssh
@@ -63,7 +61,7 @@ zen:
     zen-browser -CreateProfile "utility {{ZEN_DIR}}/zen.utility"   2>/dev/null || true
     zen-browser -CreateProfile "work {{ZEN_DIR}}/zen.work"         2>/dev/null || true
 
-    SRC="{{SHARE}}/zen/personal"
+    SRC="{{HOME}}/dotfiles/zen/personal"
     for profile in zen.personal zen.utility zen.work; do
         DEST="{{ZEN_DIR}}/$profile"
         mkdir -p "$DEST/chrome"
@@ -103,12 +101,6 @@ zen:
                 x-scheme-handler/about x-scheme-handler/unknown; do
         xdg-mime default helium.desktop "$mime" 2>/dev/null || true
     done
-
-# Restore Claude Code and Gemini CLI settings
-claude-gemini:
-    mkdir -p {{HOME}}/.claude {{HOME}}/.gemini
-    sed 's|\$HOME|{{HOME}}|g' {{SHARE}}/app-settings/claude/settings.json > {{HOME}}/.claude/settings.json
-    sed 's|\$HOME|{{HOME}}|g' {{SHARE}}/app-settings/gemini/settings.json > {{HOME}}/.gemini/settings.json
 
 # Fix Homebrew, install packages from ~/.Brewfile, install rtk and bbrew
 brew:
