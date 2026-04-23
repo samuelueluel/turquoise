@@ -4,29 +4,29 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 
 ## Image
 
-- **Compositor:** Niri (from [yalter/niri](https://copr.fedorainfracloud.org/coprs/yalter/niri/) COPR)
-- **Bar:** Waybar with custom Niri IPC modules
+- **Compositor:** Niri
+- **Bar:** Waybar
 - **Terminals:** Alacritty (primary), Kitty (only for Yazi)
 - **Editor:** Zed
-- **Browsers:** Zen Browser, Helium
+- **Browsers:** Zen, Helium
 - **Shell:** Zsh + Powerlevel10k + fzf-tab
 - **File manager:** Yazi (in Kitty), Nemo (backup)
 - **Display manager:** greetd + gtkgreet
-- **Kernel:** `@kernel-vanilla/stable` upstream stable
-- **Homebrew** framework pre-installed for user CLI tools
-- **Flatpaks:** Things I use
-- **System updates:** Everything on the system updates daily through `uupd`, available upon reboot
+- **Kernel:** [@kernel-vanilla/stable](https://copr.fedorainfracloud.org/coprs/g/kernel-vanilla/stable/)
+- **Homebrew** for user CLI tools; see `sjust brew`
+- **Flatpaks:** Only codec/theming essentials pre-installed; see `sjust flatpaks`
+- **Automatic system updates:** Everything on the system updates daily through `uupd`, available upon reboot
 
 System-wide default configs for niri, waybar, and fuzzel are baked in as fallbacks, active until user dotfiles are applied.
 
-> The image always fails for me when I boot it in a VM due to niri having issues, even though it works on a real system. If you try this in a VM and get black-screened, it is probably a VM-niri problem. Not sure how to fix it.
+> The image always fails for me when I boot it in a VM due to niri having issues. If you try this in a VM and get black-screened, it is likely an issue with OpenGL accelartion. I've never been able to fix it.
 
 ## Fresh install
 
 ### 1. Install Fedora Silverblue
 
 - Filesystem: **XFS**
-- Disable Secure Boot in UEFI (required — the vanilla kernel cannot be signed)
+- Disable Secure Boot in UEFI (required---the kernel cannot be signed)
 
 ### 2. Rebase to this image
 
@@ -41,9 +41,9 @@ After getting through the gtkgreet login screen, press **Super+\`** to open a te
 
 ### 3. Run sjust
 
-All initial user-level configuration is handled by `sjust`, a wrapper for `just`. All configuration files and scripts it applies are included in the image.
+Remaining user-level configuration is handled by `sjust`, a wrapper for `just`. All configuration files and scripts it applies are included in the image.
 
-| Recipe | What it does |
+| Recipe | Description |
 |---|---|
 | `sjust setup` | Runs everything below in sequence, except sjust swap |
 | `sjust dirs` | Pre-creates `~/.ssh`, `~/.claude`, `~/.config`, etc. |
@@ -51,12 +51,14 @@ All initial user-level configuration is handled by `sjust`, a wrapper for `just`
 | `sjust zsh-plugins` | Clones Powerlevel10k and fzf-tab |
 | `sjust zen` | Creates Zen profiles, restores settings, and sets Helium as default browser |
 | `sjust claude-gemini` | Restores Claude Code and Gemini CLI settings |
-| `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages, and configures RTK |
-| `sjust flatpaks` | Adds Flathub, installs Flatpaks, and applies permission overrides |
+| `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages including Claude Code and Gemini CLI, and configures RTK |
+| `sjust flatpaks` | Adds Flathub, installs my Flatpaks, and applies permission overrides |
 | `sjust system` | Adds user to all required groups, sets Zsh as default shell |
 | `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
+
+> These settings are optimized for my 14 inch laptop and may not look great on a larger monitor.
 
 ## AI Disclaimer
 
