@@ -20,7 +20,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 
 ---
 
-## Stack
+## Image
 
 | Category | Software |
 |---|---|
@@ -34,10 +34,10 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 | File manager | Yazi (in Kitty), Nemo (backup) |
 | Kernel | [@kernel-vanilla/stable](https://copr.fedorainfracloud.org/coprs/g/kernel-vanilla/stable/) |
 | CLI tools | Homebrew (see `sjust brew`) |
-| GUI apps | Flatpak — codecs/theming essentials only (see `sjust flatpaks`) |
-| Updates | Daily via `uupd`, applied on next reboot |
+| Flatpaks | Codecs/theming essentials only (see `sjust flatpaks`) |
+| Automatic updates | Daily system updates via `uupd`, applied on next reboot |
 
-Essential system packages track the Fedora update cycle. Most everything else tracks the latest release. The Universal Blue philosophy applies: Flatpak for GUI apps, Distrobox for apps without Flatpaks or needing deep system access, Homebrew for CLI tools. Never layer with `rpm-ostree`.
+Essential system packages track the Fedora update cycle. Most everything else tracks the latest release. Philosophy: Flatpak for GUI apps, Distrobox for apps without Flatpaks or needing deep system access, Homebrew for CLI tools. Never layer with `rpm-ostree`.
 
 > [!NOTE]
 > VM installs may black-screen due to niri's OpenGL acceleration requirement.
@@ -61,11 +61,11 @@ systemctl reboot
 After reaching the gtkgreet login screen, press **Super+\`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` to configure WiFi if needed.
 
 > [!TIP]
-> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else.
+> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop.
 
 ### 3. Run sjust
 
-System-wide default configs for niri, waybar, and fuzzel are baked in as fallbacks, active until user dotfiles are applied. Remaining user-level configuration is handled by `sjust`, a `just` wrapper. All configuration files and scripts it applies are included in the image.
+System-wide default configs for niri, waybar, and fuzzel are baked in as fallbacks, active until user dotfiles are applied. Remaining user-level configuration is handled by `sjust`, a `just` wrapper. All configuration files and scripts it applies are included in the image, tracking my personal dotfiles repo.
 
 | Recipe | Description |
 |---|---|
