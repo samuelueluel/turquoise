@@ -85,8 +85,6 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
 
-> These settings are optimized for a 14-inch laptop and may not look great on a larger monitor.
-
 ---
 
 ## AI Disclaimer
