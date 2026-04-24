@@ -30,7 +30,7 @@ dirs:
         {{HOME}}/.npm-global/bin
     chmod 700 {{HOME}}/.ssh
 
-# Register Zen profiles and create .desktop launchers (settings deployed by chezmoi)
+# Register Zen profiles and create .desktop launchers (optional; before chezmoi)
 zen:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -77,7 +77,19 @@ zen:
         xdg-mime default helium.desktop "$mime" 2>/dev/null || true
     done
 
-# Install Zen Browser extensions into each profile (run after chezmoi)
+# Deploy dotfiles from image snapshot, init chezmoi, apply (before brew)
+chezmoi:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -d "$HOME/dotfiles/.git" ]]; then
+        echo "Populating ~/dotfiles from image snapshot..."
+        rsync -a {{SHARE}}/dotfiles/ "$HOME/dotfiles/"
+    fi
+    chezmoi init --source="$HOME/dotfiles"
+    chezmoi apply --force
+    systemctl --user enable empty-trash.service battery-notify.service cliphist-wipe.service || true
+
+# Install Zen Browser extensions into each profile (optional; after chezmoi)
 zen-extensions:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -128,18 +140,6 @@ zen-extensions:
     amo "$WORK" "chrome-mask"       "chrome-mask@overengineer.dev.xpi"
 
     echo "Done."
-
-# Deploy dotfiles from image snapshot, init chezmoi, apply
-chezmoi:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -d "$HOME/dotfiles/.git" ]]; then
-        echo "Populating ~/dotfiles from image snapshot..."
-        rsync -a {{SHARE}}/dotfiles/ "$HOME/dotfiles/"
-    fi
-    chezmoi init --source="$HOME/dotfiles"
-    chezmoi apply --force
-    systemctl --user enable empty-trash.service battery-notify.service cliphist-wipe.service || true
 
 # Clone zsh plugins (powerlevel10k, fzf-tab)
 zsh-plugins:
@@ -221,7 +221,7 @@ system:
     ZSH_PATH="$(command -v zsh)"
     [[ "$SHELL" == "$ZSH_PATH" ]] || sudo usermod -s "$ZSH_PATH" "$ME"
 
-# Replace default zRAM with a 16GB swap file on /var
+# Replace default zRAM with a 16GB swap file on /var (optional; not in setup)
 swap:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -238,7 +238,7 @@ swap:
     grep -q '/var/swapfile' /etc/fstab || echo '/var/swapfile none swap defaults 0 0' | sudo tee -a /etc/fstab
     swapon --show
 
-# Sync Claude + Gemini config and memories to system_config_git backup
+# Sync Claude + Gemini config and memories to system_config_git backup (requires private SSH key; not in setup)
 backup-llm:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -251,7 +251,7 @@ backup-llm:
     rsync -av {{HOME}}/.gemini/GEMINI.md {{HOME}}/system_config_git/claude-backup/gemini-memory/
     rsync -av {{HOME}}/.gemini/memory/samuel/GEMINI.md {{HOME}}/system_config_git/claude-backup/gemini-memory/
 
-# System maintenance: health check, image upgrade, flatpaks, brew, firmware
+# System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
 update:
     #!/usr/bin/env bash
     set -euo pipefail
