@@ -59,7 +59,7 @@ sudo bootc switch ghcr.io/samuelueluel/samuel-niri:latest
 systemctl reboot
 ```
 
-After reaching the gtkgreet login screen, press **Super+\`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` to configure WiFi if needed.
+After booting into the new image, press **Super+\`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` to configure WiFi if needed.
 
 > [!IMPORTANT]
 > **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop.
@@ -72,9 +72,9 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 |---|---|
 | `sjust setup` | Runs everything below in sequence (except `sjust swap` and `sjust update`) |
 | `sjust dirs` | Pre-creates `~/.ssh`, `~/.config`, `~/.npm-global`, etc. |
-| `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi |
+| `sjust zen` | Registers Zen profiles and creates `.desktop` launchers; sets Helium as default "light/utility" browser |
+| `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi (includes Zen config) |
 | `sjust zsh-plugins` | Clones Powerlevel10k and fzf-tab |
-| `sjust zen` | Creates Zen profiles, restores settings from dotfiles, sets Helium as default browser |
 | `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages (including Claude Code and Gemini CLI), configures RTK |
 | `sjust flatpaks` | Adds Flathub, installs Flatpaks, applies permission overrides |
 | `sjust system` | Adds user to required groups, sets Zsh as default shell |
@@ -82,7 +82,7 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 | `sjust update` | Manually triggers the automatic system update with additional housecleaning |
 
 > [!IMPORTANT]
-> **`sjust chezmoi` must run before `sjust brew` and `sjust zen`** — both depend on files chezmoi puts in place (`~/.Brewfile` and `~/dotfiles/zen/`). All other recipes are order-independent.
+> **`sjust chezmoi` must run before `sjust brew`** — brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` is optional; if you run it, do so before `sjust chezmoi` so that chezmoi can populate the registered profile directories. If skipped, Zen opens with default settings.
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
 
