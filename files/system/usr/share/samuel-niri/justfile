@@ -120,8 +120,8 @@ brew:
     brew bundle --global
     brew install gcc make
     brew install rtk
-    rtk init -g || true
-    rtk init -g --gemini || true
+    rtk init -g --auto-patch || true
+    rtk init -g --gemini --auto-patch || true
     BBREW_VERSION=$(curl -fsSL https://api.github.com/repos/Valkyrie00/bold-brew/releases/latest \
         | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
     BBREW_TMP=$(mktemp -d)
