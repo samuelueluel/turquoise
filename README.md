@@ -32,6 +32,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 | Editor | Zed |
 | Browsers | Zen, Helium |
 | File manager | Yazi (in Kitty), Nemo (backup) |
+| Cloud storage | Dropbox |
 | Kernel | [@kernel-vanilla/stable](https://copr.fedorainfracloud.org/coprs/g/kernel-vanilla/stable/) |
 | CLI tools | Homebrew (see `sjust brew`) |
 | Flatpaks | Codecs/theming essentials only (see `sjust flatpaks`) |

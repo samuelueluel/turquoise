@@ -10,7 +10,7 @@ default:
     @just --justfile /usr/share/samuel-niri/justfile --list --unsorted
 
 # Full setup — run everything in order
-setup: dirs chezmoi zsh-plugins zen brew flatpaks system
+setup: dirs zen chezmoi zsh-plugins brew flatpaks system
     update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
     @echo ""
     @echo "Done. Manual steps remaining:"
@@ -31,26 +31,7 @@ dirs:
         {{HOME}}/.npm-global/bin
     chmod 700 {{HOME}}/.ssh
 
-# Deploy dotfiles from image snapshot, init chezmoi, apply
-chezmoi:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -d "$HOME/dotfiles/.git" ]]; then
-        echo "Populating ~/dotfiles from image snapshot..."
-        rsync -a {{SHARE}}/dotfiles/ "$HOME/dotfiles/"
-    fi
-    chezmoi init --source="$HOME/dotfiles"
-    chezmoi apply --force
-    systemctl --user enable empty-trash.service battery-notify.service cliphist-wipe.service || true
-
-# Clone zsh plugins (powerlevel10k, fzf-tab)
-zsh-plugins:
-    @test -d {{ZSH_PLUGS}}/powerlevel10k || \
-        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git {{ZSH_PLUGS}}/powerlevel10k
-    @test -d {{ZSH_PLUGS}}/fzf-tab || \
-        git clone --depth=1 https://github.com/Aloxaf/fzf-tab {{ZSH_PLUGS}}/fzf-tab
-
-# Set up Zen profiles, restore settings, and set Helium as default browser
+# Register Zen profiles and create .desktop launchers (settings deployed by chezmoi)
 zen:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -59,17 +40,6 @@ zen:
     zen-browser -CreateProfile "personal {{ZEN_DIR}}/zen.personal" 2>/dev/null || true
     zen-browser -CreateProfile "utility {{ZEN_DIR}}/zen.utility"   2>/dev/null || true
     zen-browser -CreateProfile "work {{ZEN_DIR}}/zen.work"         2>/dev/null || true
-
-    SRC="{{HOME}}/dotfiles/zen"
-    for profile in zen.personal zen.utility zen.work; do
-        DEST="{{ZEN_DIR}}/$profile"
-        mkdir -p "$DEST/chrome"
-        cp "$SRC/user.js"                      "$DEST/" 2>/dev/null || true
-        cp "$SRC/zen-keyboard-shortcuts.json"  "$DEST/" 2>/dev/null || true
-        cp "$SRC/zen-themes.json"              "$DEST/" 2>/dev/null || true
-        cp "$SRC/chrome/zen-themes.css"        "$DEST/chrome/" 2>/dev/null || true
-        cp -r "$SRC/chrome/zen-themes"         "$DEST/chrome/" 2>/dev/null || true
-    done
 
     declare -A ICONS=( ["personal"]="a7xpg" ["utility"]="braindump" ["work"]="applications-office" )
     declare -A NAMES=( ["personal"]="Personal" ["utility"]="Utility" ["work"]="Work" )
@@ -107,6 +77,25 @@ zen:
                 x-scheme-handler/about x-scheme-handler/unknown; do
         xdg-mime default helium.desktop "$mime" 2>/dev/null || true
     done
+
+# Deploy dotfiles from image snapshot, init chezmoi, apply
+chezmoi:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -d "$HOME/dotfiles/.git" ]]; then
+        echo "Populating ~/dotfiles from image snapshot..."
+        rsync -a {{SHARE}}/dotfiles/ "$HOME/dotfiles/"
+    fi
+    chezmoi init --source="$HOME/dotfiles"
+    chezmoi apply --force
+    systemctl --user enable empty-trash.service battery-notify.service cliphist-wipe.service || true
+
+# Clone zsh plugins (powerlevel10k, fzf-tab)
+zsh-plugins:
+    @test -d {{ZSH_PLUGS}}/powerlevel10k || \
+        git clone --depth=1 https://github.com/romkatv/powerlevel10k.git {{ZSH_PLUGS}}/powerlevel10k
+    @test -d {{ZSH_PLUGS}}/fzf-tab || \
+        git clone --depth=1 https://github.com/Aloxaf/fzf-tab {{ZSH_PLUGS}}/fzf-tab
 
 # Fix Homebrew, install packages from ~/.Brewfile, install rtk and bbrew
 brew:
