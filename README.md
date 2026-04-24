@@ -74,15 +74,16 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 | `sjust dirs` | Pre-creates `~/.ssh`, `~/.config`, `~/.npm-global`, etc. |
 | `sjust zen` | Registers Zen profiles and creates `.desktop` launchers; sets Helium as default "light/utility" browser |
 | `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi (includes Zen config) |
+| `sjust zen-extensions` | Installs Zen Browser extensions (AMO + custom XPIs) into each profile; run after chezmoi |
 | `sjust zsh-plugins` | Clones Powerlevel10k and fzf-tab |
-| `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages (including Claude Code and Gemini CLI), configures RTK |
+| `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages (including Claude Code and Gemini CLI), installs RTK and bbrew |
 | `sjust flatpaks` | Adds Flathub, installs Flatpaks, applies permission overrides |
 | `sjust system` | Adds user to required groups, sets Zsh as default shell |
 | `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 | `sjust update` | Manually triggers the automatic system update with additional housecleaning |
 
 > [!IMPORTANT]
-> **`sjust chezmoi` must run before `sjust brew`** because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` is optional; if you run it, do so before `sjust chezmoi` so that chezmoi can populate the registered profile directories. If skipped, Zen opens with default settings. 
+> **`sjust chezmoi` must run before `sjust brew`** because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional; skip both and Zen opens with default settings. If you run them: run `sjust zen` before `sjust chezmoi` (so chezmoi can populate the profile directories), then run `sjust zen-extensions` after `sjust chezmoi` (it copies XPI files from `~/dotfiles/zen-extensions/`).
 > `sjust` recipes not listed in this README but present in the justfile are not for general use---they will fail harmlessly due to lacking SSH access to private repos.
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
