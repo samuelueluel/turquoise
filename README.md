@@ -56,6 +56,8 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 | `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 | `sjust update` | Manually runs the automatic system update with some additional housecleaning
 
+When running recipes individually rather than via `sjust setup`, note that **`sjust chezmoi` must run before `sjust brew` and `sjust zen`** — both depend on files from `~/dotfiles` that chezmoi puts in place (`~/.Brewfile` and `~/dotfiles/zen/`). All other recipes are order-independent.
+
 Log out and back in after setup to activate the new shell and Homebrew PATH.
 
 > These settings are optimized for my 14 inch laptop and may not look great on a larger monitor.
