@@ -82,8 +82,8 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 | `sjust update` | Manually triggers the automatic system update with additional housecleaning |
 
 > [!IMPORTANT]
-> **`sjust chezmoi` must run before `sjust brew`** because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` is optional; if you run it, do so before `sjust chezmoi` so that chezmoi can populate the registered profile directories. If skipped, Zen opens with default settings.
-
+> **`sjust chezmoi` must run before `sjust brew`** because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` is optional; if you run it, do so before `sjust chezmoi` so that chezmoi can populate the registered profile directories. If skipped, Zen opens with default settings. 
+> `sjust` recipes not listed in this README but present in the justfile are not for general use---they will fail harmlessly due to lacking SSH access to private repos.
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
 
