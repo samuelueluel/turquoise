@@ -114,18 +114,21 @@ brew:
     set -euo pipefail
     sudo rm -f /etc/.linuxbrew
     sudo systemctl start brew-setup.service || true
-    sudo chown -R "$(whoami):$(id -g)" /home/linuxbrew
+    sudo chown -R "$(whoami):wheel" /home/linuxbrew
+    sudo chmod -R g+rwX /home/linuxbrew
     eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
     brew bundle --global
     brew install gcc make
     brew install rtk
-    rtk init -g --yes || true
-    rtk init -g --gemini --yes || true
+    rtk init -g || true
+    rtk init -g --gemini || true
     BBREW_VERSION=$(curl -fsSL https://api.github.com/repos/Valkyrie00/bold-brew/releases/latest \
         | grep '"tag_name"' | cut -d'"' -f4 | tr -d 'v')
+    BBREW_TMP=$(mktemp -d)
     curl -L "https://github.com/Valkyrie00/bold-brew/releases/download/v${BBREW_VERSION}/bbrew_${BBREW_VERSION}_linux_amd64.tar.gz" \
-        | tar -xz -C /tmp \
-        && mv /tmp/bbrew "$(brew --prefix)/bin/bbrew"
+        | tar -xz -C "$BBREW_TMP" \
+        && mv "$BBREW_TMP/bbrew" "$(brew --prefix)/bin/bbrew"
+    rm -rf "$BBREW_TMP"
 
 # Add Flathub, install flatpaks, apply permission overrides
 flatpaks:
@@ -219,6 +222,8 @@ update:
 
     echo -e "\n\033[34m=== Updating Homebrew and Packages ===\033[0m"
     if command -v brew >/dev/null; then
+        sudo chown -R "$(whoami):wheel" /home/linuxbrew 2>/dev/null || true
+        sudo chmod -R g+rwX /home/linuxbrew 2>/dev/null || true
         echo -e "\033[36m  \$ brew update && brew upgrade && brew cleanup\033[0m"
         brew update && brew upgrade && brew cleanup
     else
