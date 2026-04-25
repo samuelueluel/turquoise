@@ -247,6 +247,7 @@ ssh-setup:
         exit 1
     fi
     systemctl --user enable --now ssh-agent.socket
+    export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/ssh-agent.socket"
     ssh-add ~/.ssh/id_ed25519
     echo "SSH agent socket enabled and key loaded."
 
