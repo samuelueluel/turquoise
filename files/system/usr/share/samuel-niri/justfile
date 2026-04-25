@@ -194,7 +194,8 @@ flatpaks:
         com.github.tchx84.Flatseal \
         io.github.flattool.Warehouse \
         io.github.kolunmi.Bazaar \
-        org.fedoraproject.MediaWriter
+        org.fedoraproject.MediaWriter \
+        com.logseq.Logseq
     flatpak override --user --filesystem=xdg-config/gtk-3.0:ro io.github.quodlibet.QuodLibet || true
     flatpak override --user --filesystem=xdg-config/gtk-4.0:ro com.saivert.pwvucontrol || true
     flatpak override --user --env=QT_QPA_PLATFORMTHEME=qt6ct --filesystem=xdg-config/qt6ct:ro --filesystem=xdg-data/color-schemes:ro org.kde.okular || true
@@ -237,6 +238,18 @@ swap:
     sudo swapon /var/swapfile
     grep -q '/var/swapfile' /etc/fstab || echo '/var/swapfile none swap defaults 0 0' | sudo tee -a /etc/fstab
     swapon --show
+
+# Configure SSH agent socket and load personal key (requires ~/.ssh/id_ed25519; not in setup)
+ssh-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -f "$HOME/.ssh/id_ed25519" ]]; then
+        echo "No ~/.ssh/id_ed25519 found — this recipe is for Samuel's personal setup only."
+        exit 1
+    fi
+    systemctl --user enable --now ssh-agent.socket
+    ssh-add ~/.ssh/id_ed25519
+    echo "SSH agent socket enabled and key loaded."
 
 # Sync Claude + Gemini config and memories to system_config_git backup (requires private SSH key; not in setup)
 backup-llm:
