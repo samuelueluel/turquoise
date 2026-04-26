@@ -272,15 +272,7 @@ obsidian-cli:
         exit 1
     }
 
-    python3 -c "
-import json
-with open('$OBSIDIAN_JSON') as f:
-    data = json.load(f)
-data['cli'] = True
-with open('$OBSIDIAN_JSON', 'w') as f:
-    json.dump(data, f)
-print('CLI toggle enabled in obsidian.json')
-"
+    python3 -c "import json; fp='$OBSIDIAN_JSON'; data=json.load(open(fp)); data['cli']=True; json.dump(data, open(fp,'w')); print('CLI toggle enabled in obsidian.json')"
 
     [[ -x "$HOME/.local/bin/obsidian" ]] \
         && echo "Wrapper at ~/.local/bin/obsidian is in place." \
