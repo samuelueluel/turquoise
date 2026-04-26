@@ -251,6 +251,43 @@ ssh-setup:
     ssh-add ~/.ssh/id_ed25519
     echo "SSH agent socket enabled and key loaded."
 
+# Set up Obsidian CLI wrapper — enables CLI toggle and verifies wrapper is deployed (not in setup)
+obsidian-cli:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OBSIDIAN_JSON="$HOME/.var/app/md.obsidian.Obsidian/config/obsidian/obsidian.json"
+
+    flatpak info md.obsidian.Obsidian &>/dev/null || {
+        echo "Obsidian Flatpak not installed. Run 'sjust flatpaks' first."
+        exit 1
+    }
+
+    pgrep -f "md.obsidian.Obsidian" &>/dev/null && {
+        echo "Obsidian is running — close it first so the config change isn't overwritten."
+        exit 1
+    }
+
+    [[ -f "$OBSIDIAN_JSON" ]] || {
+        echo "obsidian.json not found at $OBSIDIAN_JSON — launch Obsidian at least once first."
+        exit 1
+    }
+
+    python3 -c "
+import json
+with open('$OBSIDIAN_JSON') as f:
+    data = json.load(f)
+data['cli'] = True
+with open('$OBSIDIAN_JSON', 'w') as f:
+    json.dump(data, f)
+print('CLI toggle enabled in obsidian.json')
+"
+
+    [[ -x "$HOME/.local/bin/obsidian" ]] \
+        && echo "Wrapper at ~/.local/bin/obsidian is in place." \
+        || echo "Warning: ~/.local/bin/obsidian not found — run 'sjust chezmoi' to deploy dotfiles first."
+
+    echo "Done. Launch Obsidian to activate the socket, then test with: obsidian files"
+
 # Sync Claude + Gemini config and memories to system_config_git backup (requires private SSH key; not in setup)
 backup-llm:
     #!/usr/bin/env bash
