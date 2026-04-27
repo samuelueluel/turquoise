@@ -10,7 +10,7 @@ default:
     @just --justfile /usr/share/samuel-niri/justfile --list --unsorted
 
 # Full setup — run everything in order
-setup: dirs zen waypaper-defaults chezmoi zen-extensions zsh-plugins brew flatpaks system
+setup: dirs zen chezmoi zen-extensions zsh-plugins brew flatpaks system
     update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
     @echo ""
     @echo "Done. Manual steps remaining:"
@@ -29,19 +29,6 @@ dirs:
         {{HOME}}/.ssh \
         {{HOME}}/.npm-global/bin
     chmod 700 {{HOME}}/.ssh
-
-# Seed default waypaper config if not already present (before chezmoi)
-waypaper-defaults:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    CONFIG="{{HOME}}/.config/waypaper/config.ini"
-    if [[ -f "$CONFIG" ]]; then
-        echo "waypaper config already exists, skipping."
-        exit 0
-    fi
-    mkdir -p "{{HOME}}/.config/waypaper"
-    cp {{SHARE}}/waypaper-default.ini "$CONFIG"
-    echo "waypaper default config written."
 
 # Register Zen profiles and create .desktop launchers (optional; before chezmoi)
 zen:
@@ -297,20 +284,6 @@ obsidian-cli:
         || echo "Warning: ~/.local/bin/obsidian not found — run 'sjust chezmoi' to deploy dotfiles first."
 
     echo "Done. Launch Obsidian to activate the socket, then test with: obsidian files"
-
-# Enable random wallpaper on each login via systemd user service (requires chezmoi dotfiles deployed)
-wallpaper-random:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    script="{{HOME}}/.local/bin/random-wallpaper.sh"
-    service="{{HOME}}/.config/systemd/user/random-wallpaper.service"
-    [[ -x "$script" && -f "$service" ]] || {
-        echo "Files not found — run 'sjust chezmoi' to deploy dotfiles first."
-        exit 1
-    }
-    systemctl --user daemon-reload
-    systemctl --user enable --now random-wallpaper.service
-    @echo "random-wallpaper.service enabled."
 
 # Sync Claude + Gemini config and memories to system_config_git backup (requires private SSH key; not in setup)
 backup-llm:

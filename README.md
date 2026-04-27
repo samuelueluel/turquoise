@@ -36,9 +36,9 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 | Kernel | [@kernel-vanilla/stable](https://copr.fedorainfracloud.org/coprs/g/kernel-vanilla/stable/) |
 | CLI tools | Homebrew (see `sjust brew`) |
 | Flatpaks | Codecs/theming essentials only (see `sjust flatpaks`) |
-| Automation | Daily system updates via `uupd` applied on next reboot, trash and clipboard history emptied on boot |
+| Automation | Daily image + Flatpak + Homebrew + Distrobox updates via `uupd`, random wallpaper on login, trash and clipboard history emptied on boot |
 
-Essential system packages track the Fedora update cycle. Most everything else tracks the latest release. Philosophy: Flatpak for GUI apps, Distrobox for apps without Flatpaks or needing deep system access, Homebrew for CLI tools. Never layer with `rpm-ostree`.
+Flatpak for GUI apps, Distrobox for apps without Flatpaks or needing deep system access, Homebrew for CLI tools. Never layer with `rpm-ostree`. Essential system packages track the Fedora update cycle. Most everything else tracks the latest release.
 
 > [!NOTE]
 > VM installs may black-screen due to niri's OpenGL acceleration requirement.
@@ -49,7 +49,7 @@ Essential system packages track the Fedora update cycle. Most everything else tr
 
 ### 1. Install Fedora Silverblue
 
-- Filesystem: **XFS**
+- Filesystem: **XFS** 
 - Disable Secure Boot in UEFI (the kernel cannot be signed)
 
 ### 2. Rebase to this image
@@ -83,7 +83,7 @@ System-wide default configs for niri, waybar, and fuzzel are baked in as fallbac
 | `sjust update` | Manually triggers the automatic system update with additional housecleaning |
 
 > [!IMPORTANT]
-> **`sjust chezmoi` must run before `sjust brew`** because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional; skip both and Zen opens with default settings. If you run them: run `sjust zen` before `sjust chezmoi` (so chezmoi can populate the profile directories), then run `sjust zen-extensions` after `sjust chezmoi` (it copies XPI files from `~/dotfiles/zen-extensions/`).
+> **`sjust chezmoi` must run before `sjust brew`** because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional; skip both and Zen opens with default settings. If you run them, you must run `sjust zen` before `sjust chezmoi`, and then run `sjust zen-extensions` after `sjust chezmoi`.
 > `sjust` recipes not listed in this README but present in the justfile are not for general use---they will fail harmlessly due to lacking SSH access to private repos.
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
