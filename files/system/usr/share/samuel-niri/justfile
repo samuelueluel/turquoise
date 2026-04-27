@@ -186,7 +186,7 @@ flatpaks:
         com.github.wwmm.easyeffects \
         com.saivert.pwvucontrol \
         io.github.quodlibet.QuodLibet \
-        org.qgis.qgis \
+        org.qgis.qgis//stable \
         org.nicotine_plus.Nicotine \
         com.stremio.Stremio \
         io.missioncenter.MissionCenter \
