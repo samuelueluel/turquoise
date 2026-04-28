@@ -171,7 +171,6 @@ modules:
         - network-manager-applet
         # hyprpicker: not in Fedora repos — add via script if needed
         - libappindicator-gtk3
-        # cliphist: not in Fedora 43 repos; installed via install-cliphist.sh
         # nirius: built from source via build-nirius.sh (Terra is behind upstream)
         - jq # JSON parsing for Waybar/Niri IPC scripts — think already in base-main
         - socat # IPC socket listener for Niri event-driven Waybar updates
@@ -622,6 +621,7 @@ modules:
   - type: script
     scripts:
       - setup-selinux.sh
+      - hide-duplicate-desktops.sh
 
   # ── Systemd services ──────────────────────────────────────────────────────
   - type: systemd

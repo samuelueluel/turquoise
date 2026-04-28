@@ -9,7 +9,7 @@ git clone --depth=1 "https://github.com/${DOTFILES_OWNER}/dotfiles.git" /usr/sha
 rm -rf /usr/share/samuel-niri/dotfiles/.git
 
 echo "Copying fallback configs to /etc..."
-mkdir -p /etc/niri /etc/xdg/waybar /etc/xdg/fuzzel
+mkdir -p /etc/niri /etc/xdg/waybar
 
 # Niri fallback (handle potential .tmpl extension)
 if [[ -f "/usr/share/samuel-niri/dotfiles/dot_config/niri/config.kdl" ]]; then
@@ -21,12 +21,8 @@ elif [[ -f "/usr/share/samuel-niri/dotfiles/dot_config/niri/config.kdl.tmpl" ]];
 fi
 
 cp -r /usr/share/samuel-niri/dotfiles/dot_config/waybar/* /etc/xdg/waybar/
-cp /usr/share/samuel-niri/dotfiles/dot_config/fuzzel/fuzzel.ini /etc/xdg/fuzzel/fuzzel.ini
-
 chmod +x \
     /usr/bin/sjust \
-    /usr/bin/cliphist-pick \
-    /usr/bin/cliphist-preview \
     /usr/bin/niri-complement-column \
     /usr/bin/niri-minimap \
     /usr/bin/niri-nav \

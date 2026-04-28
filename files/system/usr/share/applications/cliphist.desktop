@@ -1,7 +1,0 @@
-[Desktop Entry]
-Name=Clipboard
-Exec=kitty --override close_on_child_death=yes --title "Clipboard History" -e cliphist-pick
-Icon=clipit-trayicon
-Type=Application
-Terminal=false
-NoDisplay=false
