@@ -2,12 +2,23 @@
 
 set -ouex pipefail
 
-echo "Hiding system desktop files to prevent fsel duplicates..."
+echo "Removing system desktop files to prevent fsel duplicates..."
 
-if [[ -f /usr/share/applications/kitty.desktop ]]; then
-    echo "NoDisplay=true" >> /usr/share/applications/kitty.desktop
-fi
+# fsel ignores NoDisplay=true and doesn't deduplicate between system and local paths.
+# We physically remove these from /usr/share/applications during the image build
+# to ensure only the user's versions in ~/.local/share/applications are active.
 
-if [[ -f /usr/share/applications/Alacritty.desktop ]]; then
-    echo "NoDisplay=true" >> /usr/share/applications/Alacritty.desktop
-fi
+APPS_TO_REMOVE=(
+    "kitty.desktop"
+    "Alacritty.desktop"
+    "dev.zed.Zed.desktop"
+)
+
+for APP in "${APPS_TO_REMOVE[@]}"; do
+    if [[ -f "/usr/share/applications/$APP" ]]; then
+        echo "Removing system $APP"
+        rm "/usr/share/applications/$APP"
+    else
+        echo "System $APP not found, skipping."
+    fi
+done
