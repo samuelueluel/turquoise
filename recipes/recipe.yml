@@ -158,7 +158,6 @@ modules:
         - swayidle
         - swww
         - python3-waypaper
-        - fuzzel
         - SwayNotificationCenter
         - wlsunset
         - kanshi
@@ -529,11 +528,17 @@ modules:
     scripts:
       - install-yazi.sh
 
-  # ── Install cliphist binary ───────────────────────────────────────────────
-  # Not in Fedora 43 repos; download pre-built amd64 binary from GitHub releases
+  # ── Build fsel from source ──────────────────────────────────────────────────
+  # Not in Fedora repos; built from source using cargo
   - type: script
     scripts:
-      - install-cliphist.sh
+      - build-fsel.sh
+
+  # ── Build cclip from source ────────────────────────────────────────────────
+  # Not in Fedora repos; built from source using cargo
+  - type: script
+    scripts:
+      - build-cclip.sh
 
   # ── Build keyd from source ────────────────────────────────────────────────
   # Not in Fedora repos; was in Terra which has recurring GPG issues
