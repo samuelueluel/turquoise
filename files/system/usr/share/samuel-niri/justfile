@@ -184,7 +184,6 @@ flatpaks:
         org.gnome.meld \
         org.texstudio.TeXstudio \
         com.github.wwmm.easyeffects \
-        com.saivert.pwvucontrol \
         io.github.quodlibet.QuodLibet \
         org.qgis.qgis//stable \
         org.nicotine_plus.Nicotine \
@@ -196,7 +195,6 @@ flatpaks:
         io.github.kolunmi.Bazaar \
         org.fedoraproject.MediaWriter
     flatpak override --user --filesystem=xdg-config/gtk-3.0:ro io.github.quodlibet.QuodLibet || true
-    flatpak override --user --filesystem=xdg-config/gtk-4.0:ro com.saivert.pwvucontrol || true
     flatpak override --user --env=QT_QPA_PLATFORMTHEME=qt6ct --filesystem=xdg-config/qt6ct:ro --filesystem=xdg-data/color-schemes:ro org.kde.okular || true
 
 # Add user to all required groups and set zsh as default shell
