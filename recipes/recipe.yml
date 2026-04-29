@@ -246,6 +246,7 @@ modules:
         - alsa-sof-firmware # Sound Open Firmware (Fedora name for sof-firmware) — think already in base-main
         - pipewire-gstreamer # think already in base-main
         - lsp-plugins-lv2 # LV2 audio plugins for host JACK apps
+        - wiremix # TUI mixer for PipeWire
 
   # ── Hardware + power ──────────────────────────────────────────────────────
   - type: dnf

@@ -87,7 +87,7 @@ chezmoi:
     fi
     chezmoi init --source="$HOME/dotfiles"
     chezmoi apply --force
-    systemctl --user enable empty-trash.service battery-notify.service cliphist-wipe.service || true
+    systemctl --user enable empty-trash.service battery-notify.service || true
 
 # Install Zen Browser extensions into each profile (optional; after chezmoi)
 zen-extensions:

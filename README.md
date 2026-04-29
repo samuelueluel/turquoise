@@ -26,6 +26,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 |---|---|
 | Compositor | Niri |
 | Bar | Waybar |
+| App Launcher | fsel |
 | Display manager | greetd + gtkgreet |
 | Shell | Zsh + Powerlevel10k + fzf-tab |
 | Terminals | Alacritty (primary), Kitty (Yazi only) |
@@ -62,11 +63,11 @@ systemctl reboot
 After booting into the new image, press **Super+\`** to open a terminal or **Super+Space** to open the app launcher. Use `nmtui` to configure WiFi if needed.
 
 > [!IMPORTANT]
-> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop.
+> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the niri keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop. App-specific keybinds are found in their config files.
 
 ### 3. Run sjust
 
-System-wide default configs for niri, waybar, and fuzzel are baked in as fallbacks, active until user dotfiles are applied. Remaining user-level configuration is handled by `sjust`, a `just` wrapper. All configuration files and scripts it applies are included in the image, tracking my personal dotfiles repo.
+System-wide default configs for niri and waybar are baked in as fallbacks, active until user dotfiles are applied. Remaining user-level configuration is handled by `sjust`, a `just` wrapper. All configuration files and scripts it applies are included in the image, tracking my personal dotfiles repo.
 
 > [!IMPORTANT]
 > This assumes a fresh install. If you rebase from something else carrying your home folders with you, then you need to make sure all dotfiles and wallpapers are backed up. `sjust chezmoi`, and therefore `sjust setup`, may overwrite them. Of course, you don't need to run any of the `sjust` commands if you don't want to.
