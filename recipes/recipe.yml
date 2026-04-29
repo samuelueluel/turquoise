@@ -1,7 +1,7 @@
 name: samuel-niri
 description: Minimal Niri Wayland Fedora Atomic image for work laptop
 base-image: ghcr.io/ublue-os/base-main
-image-version: 44 # latest
+image-version: latest # latest
 
 # To list all packages in the base image, run:
 # podman run --rm -it ghcr.io/ublue-os/base-main:latest rpm -qa
@@ -145,12 +145,8 @@ modules:
   # ── Wayland compositor stack ──────────────────────────────────────────────
   - type: dnf
     repos:
-      # erikreider/swayosd lacks a Fedora 44 chroot as of April 2026.
-      # Pointing directly to the Fedora 43 repo file to fix the build.
-      # copr:
-      #   - erikreider/swayosd
-      files:
-        - https://copr.fedorainfracloud.org/coprs/erikreider/swayosd/repo/fedora-43/erikreider-swayosd-fedora-43.repo
+      copr:
+        - erikreider/swayosd # author's COPR; was in Terra which has recurring GPG issues
     install:
       install-weak-deps: false
       packages:
