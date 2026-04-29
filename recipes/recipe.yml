@@ -150,6 +150,7 @@ modules:
     install:
       install-weak-deps: false
       packages:
+        - wdisplays # GUI for managing Wayland displays
         - waybar
         - xdg-desktop-portal-gtk # think already in base-main
         - xdg-desktop-portal-gnome # screencasting — Niri uses Smithay, not wlroots
