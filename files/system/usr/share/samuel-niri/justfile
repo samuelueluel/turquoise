@@ -176,7 +176,7 @@ flatpaks:
     set -euo pipefail
     flatpak remote-add --if-not-exists --system flathub https://dl.flathub.org/repo/flathub.flatpakrepo
     flatpak install --system --noninteractive flathub \
-        org.kde.KStyle.Kvantum//6.9 \
+        org.kde.KStyle.Kvantum//6.10 \
         md.obsidian.Obsidian \
         com.bitwarden.desktop \
         org.kde.okular \

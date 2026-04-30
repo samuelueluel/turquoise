@@ -131,14 +131,11 @@ modules:
       copr:
         - yalter/niri # niri compositor
         - ublue-os/packages # uupd unified updater
-      files:
-        - https://github.com/terrapkg/subatomic-repos/raw/main/terra.repo
-        # dropbox.repo is baked in via the files module (avoids CI network block)
+      # dropbox.repo is baked in via the files module (avoids CI network block)
     install:
       install-weak-deps: false
       packages:
         - niri
-        - zed
         - dropbox
         - uupd
 
@@ -510,6 +507,13 @@ modules:
   - type: script
     scripts:
       - build-swayosd.sh
+
+  # ── Install Zed editor (Official Binary) ─────────────────────────────────
+  # Terra RPM (1.0.0) has a wasmtime bug that crashes Zed when opening any file.
+  # Official binary from GitHub releases does not have this issue.
+  - type: script
+    scripts:
+      - install-zed.sh
 
   # ── Install Zen Browser (Native Binary) ──────────────────────────────────
   - type: script
