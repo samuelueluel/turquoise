@@ -131,13 +131,17 @@ modules:
       copr:
         - yalter/niri # niri compositor
         - ublue-os/packages # uupd unified updater
-      # dropbox.repo is baked in via the files module (avoids CI network block)
+      files:
+        - https://github.com/terrapkg/subatomic-repos/raw/main/terra.repo
+        # dropbox.repo is baked in via the files module (avoids CI network block)
     install:
       install-weak-deps: false
       packages:
         - niri
         - dropbox
         - uupd
+        - swww
+        - python3-waypaper
 
   # ── Wayland compositor stack ──────────────────────────────────────────────
   # swayosd: COPR has no Fedora 44 builds; built from source via build-swayosd.sh
@@ -152,8 +156,6 @@ modules:
         - xwayland-satellite
         - swaylock
         - swayidle
-        - swww
-        - python3-waypaper
         - SwayNotificationCenter
         - wlsunset
         - kanshi
