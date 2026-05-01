@@ -303,6 +303,10 @@ modules:
       install-weak-deps: false
       packages:
         - mpv # think already in base-main
+        - mpd # music player daemon (PipeWire-native via Fedora build)
+        - beets # music library manager and tagger
+        - beets-plugins # extra beets plugins
+        - beets-doc # beets documentation
         - swayimg # Wayland image viewer
         # yt-dlp → homebrew: yt-dlp
         - ffmpeg # think already in base-main
@@ -551,6 +555,12 @@ modules:
     scripts:
       - install-yazi.sh
 
+  # ── Install rmpc binary ───────────────────────────────────────────────────
+  # Not in Fedora repos; download pre-built musl binary from GitHub releases
+  - type: script
+    scripts:
+      - install-rmpc.sh
+
   # ── Build fsel from source ──────────────────────────────────────────────────
   # Not in Fedora repos; built from source using cargo
   - type: script
@@ -676,5 +686,6 @@ modules:
         - pipewire.service
         - pipewire-pulse.service
         - wireplumber.service
+        - mpd.service
       disabled:
         - flatpak-user-update.timer
