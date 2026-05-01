@@ -561,6 +561,13 @@ modules:
     scripts:
       - install-rmpc.sh
 
+  # ── Build rmpcd from source ───────────────────────────────────────────────
+  # rmpcd is the rmpc companion daemon (MPRIS, Last.fm, lyrics, notifications)
+  # Not distributed as a pre-built binary; built from source via cargo
+  - type: script
+    scripts:
+      - build-rmpcd.sh
+
   # ── Build fsel from source ──────────────────────────────────────────────────
   # Not in Fedora repos; built from source using cargo
   - type: script
