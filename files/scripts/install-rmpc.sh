@@ -9,7 +9,7 @@ WORK_DIR="$(mktemp -d)"
 trap "rm -rf '$WORK_DIR'" EXIT
 
 VERSION=$(curl -fsSL --retry 5 --retry-delay 5 "$API_URL" | grep '"tag_name"' | cut -d'"' -f4)
-TARBALL="rmpc-${ARCH}-unknown-linux-musl.tar.gz"
+TARBALL="rmpc-${VERSION}-${ARCH}-unknown-linux-musl.tar.gz"
 URL="https://github.com/mierak/rmpc/releases/download/${VERSION}/${TARBALL}"
 
 echo "Installing rmpc ${VERSION}..."
