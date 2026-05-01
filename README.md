@@ -99,7 +99,7 @@ Log out and back in after setup to activate the new shell and Homebrew PATH.
 
 **CapsLock is Mod.** Press **Mod+/** for the full niri keybind dashboard.
 
-An **Alt+WASD** navigation scheme is used across apps (up/down/left/right). Many default keybinds are remapped or disabled accordingly.
+An **Alt+WASD** navigation scheme is used across apps (up/down/left/right). Many default keybinds are remapped or disabled accordingly. Below is not exhaustive.
 
 ### Alacritty
 
@@ -109,7 +109,7 @@ An **Alt+WASD** navigation scheme is used across apps (up/down/left/right). Many
 | Alt+A / D | Jump backward / forward one word (readline) |
 | Ctrl+W | Delete previous character |
 | Ctrl+Q | Delete previous word |
-| Alt+Q / Alt+E | Jump to beginning / end of line |
+| Alt+Q / E | Jump to beginning / end of line |
 | Shift+Return | Send Alt+Return escape sequence |
 | Ctrl+Shift+C / V | Copy / Paste |
 
@@ -122,12 +122,12 @@ Yazi is launched by Mod+E as a floating Kitty window.
 | Alt+W / S | Cursor up / down |
 | Alt+A / D | Parent directory / open |
 | Alt+1–9 | Switch to tab 1–9 |
-| Ctrl+T / Ctrl+Q | New tab / close tab |
+| Ctrl+T / Q | New tab / close tab |
 | Ctrl+F | Fuzzy jump (fzf) |
 | Ctrl+G | Fuzzy jump to directory |
 | Ctrl+H | Search by content (ripgrep) |
 | Ctrl+S | Search by name (fd) |
-| Ctrl+N / Ctrl+B | Search Obsidian notes / grep note content and open in Obsidian |
+| Ctrl+N / B | Search Obsidian notes / grep note content and open in Obsidian |
 | Ctrl+A | Create file or folder |
 | Ctrl+E | Rename |
 | Ctrl+Delete | Trash file |
@@ -160,9 +160,10 @@ This assumes the full `sjust` sequence has been run and extensions enabled.
 | Alt+W / S | Move up / down tab list (custom extension) |
 | Alt+A / D | Next / previoius workspace |
 | Ctrl+Space | Command palette |
-| Ctrl+T / Ctrl+Q | New tab / close tab |
+| Ctrl+T / Q | New tab / close tab |
+| Ctrl+Shift+Q | Open last closed tab |
 | Alt+Tab | Last recently focused tab (custom extension) |
-| Ctrl+R | Reload |
+| Ctrl+R | Refresh |
 
 ---
 
