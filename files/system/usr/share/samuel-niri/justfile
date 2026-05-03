@@ -283,16 +283,23 @@ obsidian-cli:
 
     echo "Done. Launch Obsidian to activate the socket, then test with: obsidian files"
 
-# Sync Claude + Gemini config and memories to system_config_git backup (requires private SSH key; not in setup)
-backup-llm:
+# Install/upgrade headroom-ai[proxy] via pipx, upgrade all pipx tools, and back up Claude + Gemini config
+# Backup requires private SSH key (not in setup); skipped gracefully if unavailable
+llm:
     #!/usr/bin/env bash
     set -euo pipefail
-    if ! git -C "{{HOME}}/system_config_git" ls-remote --exit-code origin &>/dev/null; then
-        echo "You do not have permission for this recipe (no SSH access to system_config_git)."
-        exit 1
+    if pipx list --short | grep -q '^headroom-ai '; then
+        echo "headroom-ai already installed, skipping install."
+    else
+        pipx install "headroom-ai[proxy,code,mcp]"
     fi
-    rsync -av {{HOME}}/.claude/ {{HOME}}/system_config_git/claude-backup/claude/
-    rsync -av {{HOME}}/.gemini/ {{HOME}}/system_config_git/claude-backup/gemini/
+    pipx upgrade-all
+    if git -C "{{HOME}}/system_config_git" ls-remote --exit-code origin &>/dev/null; then
+        rsync -av {{HOME}}/.claude/ {{HOME}}/system_config_git/claude-backup/claude/
+        rsync -av {{HOME}}/.gemini/ {{HOME}}/system_config_git/claude-backup/gemini/
+    else
+        echo "Skipping backup — no SSH access to system_config_git."
+    fi
 
 # System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
 update:
