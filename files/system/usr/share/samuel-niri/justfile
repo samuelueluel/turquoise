@@ -295,8 +295,8 @@ llm:
     fi
     pipx upgrade-all
     if git -C "{{HOME}}/system_config_git" ls-remote --exit-code origin &>/dev/null; then
-        rsync -av {{HOME}}/.claude/ {{HOME}}/system_config_git/claude-backup/claude/
-        rsync -av {{HOME}}/.gemini/ {{HOME}}/system_config_git/claude-backup/gemini/
+        rsync -av --exclude='sessions/' --exclude='history.jsonl' --exclude='telemetry/' --exclude='cache/' --exclude='image-cache/' --exclude='paste-cache/' --exclude='backups/' {{HOME}}/.claude/ {{HOME}}/system_config_git/claude-backup/claude/
+        rsync -av --exclude='history/' --exclude='tmp/samuel/chats/' --exclude='tmp/samuel/tool-outputs/' --exclude='tmp/samuel/logs.json' {{HOME}}/.gemini/ {{HOME}}/system_config_git/claude-backup/gemini/
     else
         echo "Skipping backup — no SSH access to system_config_git."
     fi
