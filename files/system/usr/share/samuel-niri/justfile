@@ -357,6 +357,32 @@ update:
 
     echo -e "\n\033[32mUpdate sequence complete!\033[0m"
 
+# View changes between the current and previous system deployment (Atomic changelog)
+whats-new:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    CUR_MANIFEST="/usr/share/samuel-niri/manifest.md"
+    LOG_FILE="{{HOME}}/system_config_git/CHANGELOG.md"
+
+    if [[ ! -f "$CUR_MANIFEST" ]]; then
+        echo "No manifest found at $CUR_MANIFEST. This feature requires a newer image build."
+        exit 1
+    fi
+
+    echo -e "\033[34m=== Package Manifest (Current) ===\033[0m"
+    cat "$CUR_MANIFEST"
+
+    # Attempt to find previous manifest for comparison
+    # On Atomic systems, the previous deployment is usually available under /ostree/deploy/
+    PREV_DEPLOY=$(rpm-ostree status --json | jq -r '.deployments[1].id' 2>/dev/null || true)
+    if [[ -n "$PREV_DEPLOY" ]]; then
+        PREV_MANIFEST="/ostree/deploy/fedora/deploy/$PREV_DEPLOY/usr/share/samuel-niri/manifest.md"
+        if [[ -f "$PREV_MANIFEST" ]]; then
+            echo -e "\n\033[34m=== Changes since previous deployment ===\033[0m"
+            diff --color=always -u "$PREV_MANIFEST" "$CUR_MANIFEST" | grep -vE '^\+\+\+|^\-\-\-|^@@' || echo "No changes detected."
+        fi
+    fi
+
 # Spin up a temporary Distrobox staging environment using the current image or a custom one
 test-image IMAGE_URL="" DOTFILES_URL="":
     #!/usr/bin/env bash

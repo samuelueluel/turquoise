@@ -44,7 +44,7 @@ Not exhaustive. Essential system packages track the Fedora update cycle. Most ev
 | Automation | Daily image + Flatpak + Homebrew + Distrobox updates via `uupd`, random wallpaper on login, trash and clipboard history emptied on boot |
 
 > [!NOTE]
-> VM installs may black-screen due to niri's OpenGL acceleration requirement.
+> VM installs may black-screen due to niri's OpenGL acceleration requirement. In that case, try out this image in a container.
 
 ---
 

@@ -25,4 +25,7 @@ EXTRACTED="yazi-${ARCH}-unknown-linux-musl"
 install -Dm755 "${EXTRACTED}/yazi" /usr/bin/yazi
 install -Dm755 "${EXTRACTED}/ya"   /usr/bin/ya
 
+# Record version for the build manifest
+echo "Yazi: ${VERSION}" >> /tmp/build-manifest.txt
+
 echo "Done: $(yazi --version)"

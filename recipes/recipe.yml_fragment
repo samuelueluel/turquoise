@@ -1,0 +1,16 @@
+  # ── Configure greetd + gtkgreet ───────────────────────────────────────────
+  - type: script
+    scripts:
+      - setup-greetd.sh
+
+  # ── Custom SELinux policy ─────────────────────────────────────────────────
+  # Allow xdm_t (greetd) to start/status systemd unit files.
+  # Needed if niri-session triggers systemctl --user under the xdm_t context.
+  - type: script
+    scripts:
+      - setup-selinux.sh
+      - hide-duplicate-desktops.sh
+      - generate-manifest.sh
+
+  # ── Systemd services ──────────────────────────────────────────────────────
+  - type: systemd
