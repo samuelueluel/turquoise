@@ -23,7 +23,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 
 ## Packages in image
 
-Not exhaustive.
+Not exhaustive. Essential system packages track the Fedora update cycle. Most everything else tracks the latest release.
 
 | Category | Software |
 |---|---|
@@ -42,8 +42,6 @@ Not exhaustive.
 | CLI tools | See `sjust brew` |
 | Flatpaks | See `sjust flatpaks` |
 | Automation | Daily image + Flatpak + Homebrew + Distrobox updates via `uupd`, random wallpaper on login, trash and clipboard history emptied on boot |
-
-Essential system packages track the Fedora update cycle. Most everything else tracks the latest release.
 
 > [!NOTE]
 > VM installs may black-screen due to niri's OpenGL acceleration requirement.
