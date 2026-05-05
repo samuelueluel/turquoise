@@ -356,3 +356,87 @@ update:
     fwupdmgr refresh && fwupdmgr get-updates || true
 
     echo -e "\n\033[32mUpdate sequence complete!\033[0m"
+
+# Spin up a temporary Distrobox staging environment using the current image or a custom one
+test-image IMAGE_URL="" DOTFILES_URL="":
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    # 1. Detect default image if none provided
+    IMAGE="{{IMAGE_URL}}"
+    if [[ -z "$IMAGE" ]]; then
+        echo "Attempting to detect current system image..."
+        # Try rpm-ostree first as it usually doesn't require sudo for status
+        if command -v rpm-ostree &>/dev/null; then
+             IMAGE=$(rpm-ostree status -b --json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d["deployments"][0].get("container-image-reference", "").replace("ostree-unverified-registry:","").replace("ostree-image-signed:",""))' 2>/dev/null || true)
+        fi
+        # Fallback to bootc if rpm-ostree failed
+        if [[ -z "$IMAGE" ]] && command -v bootc &>/dev/null; then
+             IMAGE=$(bootc status --json 2>/dev/null | python3 -c 'import sys,json; print(json.load(sys.stdin)["status"]["booted"]["image"]["image"]["image"])' 2>/dev/null || true)
+        fi
+        if [[ -z "$IMAGE" ]]; then
+            echo "Error: Could not detect current image and no IMAGE_URL provided."
+            exit 1
+        fi
+    fi
+    # Clean up image URL (remove docker:// prefix if present)
+    IMAGE="${IMAGE#docker://}"
+    echo "Using image: $IMAGE"
+
+    # 2. Setup isolated home
+    TEST_HOME=$(mktemp -d -t distrobox-test-home-XXXXXX)
+    NAME="test-image-$(date +%s)"
+    echo "Created isolated home at: $TEST_HOME"
+
+    # 3. Create container
+    # Set TMPDIR to a local path to avoid /var/tmp permission issues common on some Atomic setups
+    mkdir -p "$HOME/tmp"
+    export TMPDIR="$HOME/tmp"
+    echo "Creating Distrobox container '$NAME'..."
+    distrobox create --pull -Y --name "$NAME" --image "$IMAGE" --home "$TEST_HOME"
+
+    # 4. Optional: Setup dotfiles
+    DOTFILES="{{DOTFILES_URL}}"
+    if [[ -n "$DOTFILES" ]]; then
+        echo "Initializing dotfiles from $DOTFILES..."
+        distrobox enter "$NAME" -- chezmoi init --apply "$DOTFILES"
+        # Force the guest to use 'Super' as the mod-key so it matches the host logic
+        echo "Configuring guest Niri to use 'Super' as mod-key..."
+        distrobox enter "$NAME" -- sed -i 's/input {/input {\n    mod-key "Super"/' ~/.config/niri/config.kdl
+    fi
+
+    # 5. Enter container
+    echo "Entering staging environment. Run 'niri' or your tools to test."
+    echo "Changes in this container will NOT affect your host system."
+    distrobox enter "$NAME"
+
+    # 6. Cleanup
+    echo ""
+    read -rp "Testing complete. Delete container and isolated home? (y/n) " -n 1 REPLY; echo
+    if [[ "$REPLY" =~ ^[Yy]$ ]]; then
+        distrobox rm -f "$NAME"
+        rm -rf "$TEST_HOME"
+        echo "Cleanup complete."
+    else
+        echo "Container '$NAME' and home '$TEST_HOME' preserved."
+    fi
+
+# Force-kill any stuck test-image containers and clean podman state
+test-clean:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Searching for stuck test-image containers..."
+    STUCK=$(podman ps -a --format "{{"{{.ID}} {{.Names}}"}}" | grep test-image | awk '{print $1}' || true)
+    if [[ -n "$STUCK" ]]; then
+        for id in $STUCK; do
+            echo "Removing container $id..."
+            podman rm -f "$id" || {
+                echo "Warning: Standard removal failed. You may need to run: sudo kill -9 <pid>"
+                podman inspect "$id" --format '{{"{{.State.Pid}}"}}' | xargs -r echo "Suggested command: sudo kill -9"
+            }
+        done
+    else
+        echo "No test-image containers found."
+    fi
+    podman system prune -f
+    rm -rf ~/tmp/distrobox-test-home-*
