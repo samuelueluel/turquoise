@@ -69,12 +69,12 @@ zen:
     done
     gtk-update-icon-cache -f -t "$HOME/.local/share/icons/hicolor" 2>/dev/null || true
 
-    xdg-settings set default-web-browser helium.desktop 2>/dev/null || true
+    xdg-settings set default-web-browser zen-utility.desktop 2>/dev/null || true
     for mime in x-scheme-handler/http x-scheme-handler/https text/html \
                 application/xhtml+xml application/x-extension-html \
                 application/x-extension-shtml application/x-extension-xhtml \
                 x-scheme-handler/about x-scheme-handler/unknown; do
-        xdg-mime default helium.desktop "$mime" 2>/dev/null || true
+        xdg-mime default zen-utility.desktop "$mime" 2>/dev/null || true
     done
 
 # Deploy dotfiles from image snapshot, init chezmoi, apply (before brew)
@@ -120,6 +120,10 @@ zen-extensions:
         [[ -d "$PROFILE" ]] || continue
         amo    "$PROFILE" "ublock-origin"               "uBlock0@raymondhill.net.xpi"
         amo    "$PROFILE" "bitwarden-password-manager"  "{446900e4-71c2-419f-a6a7-df9c091e268b}.xpi"
+        amo    "$PROFILE" "blocktube"                   "{58204f8b-01c2-4bbc-98f8-9a90458fd9ef}.xpi"
+        amo    "$PROFILE" "auto-tab-discard"            "{c2c003ee-bd69-42a2-b0e9-6f34222cb046}.xpi"
+        amo    "$PROFILE" "chrome-mask"                 "chrome-mask@overengineer.dev.xpi"
+        amo    "$PROFILE" "sponsorblock"                "sponsorBlocker@ajay.app.xpi"
         custom "$PROFILE" "alt-tab-tabs.xpi"            "alt-tab-tabs@samuel.local.xpi"
         custom "$PROFILE" "tab-cycle.xpi"               "tab-cycle@samuel.local.xpi"
     done
@@ -127,17 +131,9 @@ zen-extensions:
     # Personal only
     amo "$PERSONAL" "reddit-enhancement-suite"  "jid1-xUfzOsOFlzSOXg@jetpack.xpi"
     amo "$PERSONAL" "tampermonkey"              "firefox@tampermonkey.net.xpi"
-    amo "$PERSONAL" "sponsorblock"              "sponsorBlocker@ajay.app.xpi"
-    amo "$PERSONAL" "blocktube"                 "{58204f8b-01c2-4bbc-98f8-9a90458fd9ef}.xpi"
-    amo "$PERSONAL" "auto-tab-discard"          "{c2c003ee-bd69-42a2-b0e9-6f34222cb046}.xpi"
-    amo "$PERSONAL" "chrome-mask"               "chrome-mask@overengineer.dev.xpi"
 
     # Utility only
     amo "$UTILITY" "reddit-enhancement-suite"  "jid1-xUfzOsOFlzSOXg@jetpack.xpi"
-
-    # Work only
-    amo "$WORK" "auto-tab-discard"  "{c2c003ee-bd69-42a2-b0e9-6f34222cb046}.xpi"
-    amo "$WORK" "chrome-mask"       "chrome-mask@overengineer.dev.xpi"
 
     echo "Done."
 
