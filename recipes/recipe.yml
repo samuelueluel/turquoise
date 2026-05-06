@@ -675,7 +675,6 @@ modules:
     scripts:
       - setup-selinux.sh
       - hide-duplicate-desktops.sh
-      - generate-manifest.sh
 
   # ── Systemd services ──────────────────────────────────────────────────────
   - type: systemd
