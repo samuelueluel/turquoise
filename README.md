@@ -77,7 +77,7 @@ System-wide default configs for niri and waybar are baked in as fallbacks, activ
 |---|---|
 | `sjust setup` | Runs everything below in sequence (except `sjust swap` and `sjust update`) |
 | `sjust dirs` | Pre-creates `~/.ssh`, `~/.config`, etc. |
-| `sjust zen` | Registers Zen profiles and creates `.desktop` launchers; sets Helium as default "light/utility" browser |
+| `sjust zen` | Registers Zen profiles (Personal, Utility, Work) and creates `.desktop` launchers; sets Zen-Utility as default browser |
 | `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi (includes Zen Browser config) |
 | `sjust zen-extensions` | Installs Zen Browser extensions (AMO + custom XPIs) into each profile; run after chezmoi |
 | `sjust zsh-plugins` | Clones powerlevel10k and fzf-tab |
