@@ -89,7 +89,7 @@ System-wide default configs for niri and waybar are baked in as fallbacks, activ
 
 > [!IMPORTANT]
 > `sjust chezmoi` must run before `sjust brew` because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional. If you run them, you must run `sjust zen` before `sjust chezmoi`, and then run `sjust zen-extensions` after `sjust chezmoi`.
-> `sjust` recipes not listed in this README but present in the justfile are not for general use---they will fail harmlessly due to lacking SSH access to private repos.
+> `sjust` recipes not listed in this README but present in the justfile are not for general use. Don't use them.
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
 
