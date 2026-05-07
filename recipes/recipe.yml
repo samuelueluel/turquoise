@@ -187,7 +187,7 @@ modules:
         - cage
 
   # ── Terminals + shell ─────────────────────────────────────────────────────
-  # Note: powerlevel10k and fzf-tab managed via dotfiles; most CLI stuff in Brewfile
+  # Note: starship and fzf-tab managed via dotfiles; most CLI stuff in Brewfile
   - type: dnf
     repos:
       copr:
@@ -201,7 +201,6 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - alacritty
         - kitty
         - zsh
         - zsh-autosuggestions

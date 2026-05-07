@@ -10,7 +10,7 @@ default:
     @just --justfile /usr/share/samuel-niri/justfile --list --unsorted
 
 # Full setup — run everything in order
-setup: dirs zen chezmoi zen-extensions zsh-plugins brew flatpaks system
+setup: dirs zen chezmoi zen-extensions brew flatpaks system
     update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
     @echo ""
     @echo "Done. Manual steps remaining:"
@@ -136,11 +136,6 @@ zen-extensions:
     amo "$UTILITY" "reddit-enhancement-suite"  "jid1-xUfzOsOFlzSOXg@jetpack.xpi"
 
     echo "Done."
-
-# Clone zsh plugins (fzf-tab)
-zsh-plugins:
-    @test -d {{ZSH_PLUGS}}/fzf-tab || \
-        git clone --depth=1 https://github.com/Aloxaf/fzf-tab {{ZSH_PLUGS}}/fzf-tab
 
 # Fix Homebrew, install packages from ~/.Brewfile, install rtk and bbrew
 brew:

@@ -31,8 +31,8 @@ Not exhaustive. Essential system packages track the Fedora update cycle. Most ev
 | Bar | Waybar |
 | App launcher | fsel |
 | Display manager | greetd + gtkgreet |
-| Shell | zsh + powerlevel10k + fzf-tab |
-| Terminals | Alacritty (primary), Kitty (utility terminal for image previews) |
+| Shell | zsh + starship |
+| Terminals | Ghostty (primary), Kitty |
 | Editor | Zed |
 | Browsers | Zen, Helium |
 | File manager | Yazi (launched in Kitty), Nemo (backup) |
@@ -80,7 +80,6 @@ System-wide default configs for niri and waybar are baked in as fallbacks, activ
 | `sjust zen` | Registers Zen profiles (Personal, Utility, Work) and creates `.desktop` launchers; sets Zen-Utility as default browser |
 | `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi (includes Zen Browser config) |
 | `sjust zen-extensions` | Installs Zen Browser extensions (AMO + custom XPIs) into each profile; run after chezmoi |
-| `sjust zsh-plugins` | Clones powerlevel10k and fzf-tab |
 | `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages, and installs non-Brewfile things like bbrew |
 | `sjust flatpaks` | Adds Flathub, installs Flatpaks, applies permission overrides for theming|
 | `sjust system` | Adds user to required groups, sets zsh as default shell |
