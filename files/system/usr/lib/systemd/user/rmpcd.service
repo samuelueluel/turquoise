@@ -1,0 +1,10 @@
+[Unit]
+Description=rmpcd - MPD MPRIS bridge and daemon
+After=mpd.service
+
+[Service]
+ExecStart=/usr/bin/rmpcd
+Restart=always
+
+[Install]
+WantedBy=default.target

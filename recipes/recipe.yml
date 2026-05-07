@@ -710,5 +710,6 @@ modules:
         - pipewire-pulse.service
         - wireplumber.service
         - mpd.service
+        - rmpcd.service
       disabled:
         - flatpak-user-update.timer

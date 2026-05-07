@@ -36,9 +36,33 @@ zen:
     set -euo pipefail
     command -v zen-browser &>/dev/null || { echo "Zen Browser not found, skipping."; exit 0; }
 
-    zen-browser -CreateProfile "personal {{ZEN_DIR}}/zen.personal" 2>/dev/null || true
-    zen-browser -CreateProfile "utility {{ZEN_DIR}}/zen.utility"   2>/dev/null || true
-    zen-browser -CreateProfile "work {{ZEN_DIR}}/zen.work"         2>/dev/null || true
+    # Create profile directories
+    mkdir -p "{{ZEN_DIR}}/zen.personal" "{{ZEN_DIR}}/zen.utility" "{{ZEN_DIR}}/zen.work"
+
+    # Write profiles.ini directly — avoids -CreateProfile adding a random-hash prefix
+    # to the first profile it creates, which would make the --profile path in the
+    # .desktop launchers not match and trigger a "profile not found" warning.
+    cat > "{{ZEN_DIR}}/profiles.ini" <<'PROFILES_EOF'
+[General]
+StartWithLastProfile=1
+Version=2
+
+[Profile0]
+Name=personal
+IsRelative=1
+Path=zen.personal
+Default=1
+
+[Profile1]
+Name=utility
+IsRelative=1
+Path=zen.utility
+
+[Profile2]
+Name=work
+IsRelative=1
+Path=zen.work
+PROFILES_EOF
 
     declare -A ICONS=( ["personal"]="a7xpg" ["utility"]="braindump" ["work"]="applications-office" )
     declare -A NAMES=( ["personal"]="Personal" ["utility"]="Utility" ["work"]="Work" )
