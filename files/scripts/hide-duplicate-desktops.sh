@@ -12,6 +12,7 @@ APPS_TO_REMOVE=(
     "kitty.desktop"
     "Alacritty.desktop"
     "dev.zed.Zed.desktop"
+    "com.mitchellh.ghostty.desktop"
 )
 
 for APP in "${APPS_TO_REMOVE[@]}"; do
