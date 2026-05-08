@@ -660,8 +660,6 @@ modules:
         - uupd.timer
       disabled:
         # gdm.service and sddm.service removed: not present in base
-        - flatpak-system-update.timer
-        - brew-update.timer
         - rpm-ostreed-automatic.timer
     user:
       enabled:
@@ -672,5 +670,4 @@ modules:
         - wireplumber.service
         - mpd.service
         - rmpcd.service
-      disabled:
-        - flatpak-user-update.timer
+      disabled: []
