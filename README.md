@@ -27,7 +27,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 | Kernel | [@kernel-vanilla/stable](https://copr.fedorainfracloud.org/coprs/g/kernel-vanilla/stable/) |
 | CLI tools | `sjust brew` |
 | Flatpaks | `sjust flatpaks` |
-| Automation | Daily image + Flatpak + Homebrew + Distrobox updates via `uupd`, random wallpaper on login, trash and clipboard history emptied on boot |
+| Automation | Daily image + Flatpak + Homebrew + Distrobox updates via uupd, random wallpaper on login, trash and clipboard history emptied on boot |
 
 > [!NOTE]
 > VM installs may black-screen due to niri's OpenGL acceleration requirement.
@@ -39,24 +39,24 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 System-wide default configs for niri and waybar are baked in as fallbacks, active until user dotfiles are applied. Optional user-level configuration is handled by `sjust`. All configuration files and scripts it applies are included in the image, tracking my personal [dotfiles repo](https://github.com/samuelueluel/dotfiles).
 
 > [!IMPORTANT]
-> This assumes a fresh install. If you rebase from something else carrying your home folders with you, then you need to make sure all dotfiles and wallpapers are backed up. `sjust chezmoi`, and therefore `sjust setup`, may overwrite them. Of course, you don't need to run any of the `sjust` commands if you don't want to.
+> `sjust` is meant for fresh installs without existing dotfiles. Beware of accidently overwriting your files.
 
 | Recipe | Description |
 |---|---|
 | `sjust setup` | Runs everything below in sequence (except `sjust swap` and `sjust update`) |
 | `sjust dirs` | Pre-creates `~/.ssh`, `~/.config`, etc. |
 | `sjust zen` | Registers Zen profiles (Personal, Utility, Work) and creates `.desktop` launchers; sets Zen-Utility as default browser |
-| `sjust chezmoi` | Deploys dotfiles snapshot from image → `~/dotfiles`, applies via chezmoi (includes Zen Browser config) |
+| `sjust chezmoi` | Deploys dotfiles snapshot from image to `~/dotfiles`, applies via chezmoi (includes Zen Browser config) |
 | `sjust zen-extensions` | Installs Zen Browser extensions (AMO + custom XPIs) into each profile; run after chezmoi |
 | `sjust brew` | Sets up Homebrew permissions, installs Brewfile packages, and installs non-Brewfile things like bbrew |
-| `sjust flatpaks` | Adds Flathub, installs Flatpaks, applies permission overrides for theming|
+| `sjust flatpaks` | Adds Flathub, installs Flatpaks, applies permission overrides for theming |
 | `sjust system` | Adds user to required groups, sets zsh as default shell |
 | `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 | `sjust update` | Manually triggers the automatic system update with additional housecleaning |
 
 > [!IMPORTANT]
 > `sjust chezmoi` must run before `sjust brew` because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional. If you run them, you must run `sjust zen` before `sjust chezmoi`, and then run `sjust zen-extensions` after `sjust chezmoi`.
-> `sjust` recipes not listed in this README but present in the justfile are not for general use. Don't use them.
+> `sjust` recipes not listed in this README but present in the justfile should never be used.
 
 Log out and back in after setup to activate the new shell and Homebrew PATH.
 
@@ -67,9 +67,7 @@ Log out and back in after setup to activate the new shell and Homebrew PATH.
 > [!IMPORTANT]
 > **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the niri keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop. App-specific keybinds are found in their config files and below.
 
-**CapsLock is Mod.** Press **Mod+/** for the full niri keybind dashboard.
-
-An **Alt+WASD** navigation scheme is used across apps (up/down/left/right). Many default keybinds are remapped or disabled accordingly. Below is not exhaustive. 
+An **Alt+WASD** navigation scheme is used across apps. Many default keybinds are remapped or disabled accordingly. Below is not exhaustive. 
 
 ### Ghostty
 
@@ -81,9 +79,8 @@ An **Alt+WASD** navigation scheme is used across apps (up/down/left/right). Many
 | Ctrl+Q | Delete previous word |
 | Alt+Q / E | Jump to start / end of line |
 | Shift+Enter | New line |
-| Ctrl+C | Copy (when text selected) |
+| Ctrl+C | Copy when text selected, else SIGINT |
 | Ctrl+V | Paste |
-| Ctrl+Shift+C / V | Copy / Paste |
 
 ### Yazi
 
