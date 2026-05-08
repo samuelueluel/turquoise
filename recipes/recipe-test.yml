@@ -49,7 +49,6 @@ modules:
         - mesa-libEGL # EGL API library for Wayland hardware acceleration
         - mesa-libGL # OpenGL API library
         - mesa-va-drivers-freeworld # Hardware video acceleration (VA-API) for AMD from RPM Fusion
-        - mesa-vdpau-drivers-freeworld # Hardware video decoding (VDPAU) for AMD from RPM Fusion
         - libva # VA-API core library
         - libva-utils # VA-API diagnostic tools (vainfo)
         - libvdpau # VDPAU core library
