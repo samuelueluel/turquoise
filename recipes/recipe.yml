@@ -679,7 +679,7 @@ modules:
   - type: script
     scripts:
       - setup-selinux.sh
-      - hide-duplicate-desktops.sh
+      # - hide-duplicate-desktops.sh
 
   # ── Systemd services ──────────────────────────────────────────────────────
   - type: systemd
