@@ -72,6 +72,7 @@ modules:
         - xdg-desktop-portal # Core XDG desktop portal service (screensharing, file picking)
         - xdg-desktop-portal-gtk # GTK backend for XDG desktop portals
         - xdg-utils # Desktop integration utilities (xdg-open, etc.)
+        - flatpak # Flatpak package manager (missing in fedora-bootc)
         # Multimedia Codecs
         - gstreamer1-plugins-bad-freeworld # GStreamer plugins (bad) including full hardware codecs
         - gstreamer1-plugins-ugly # GStreamer plugins (ugly) including MP3/DVD
@@ -84,6 +85,10 @@ modules:
         - rsync # File synchronization tool
         - bash-completion # Autocompletion for bash/system utilities
         - wget2 # Command-line file downloader
+
+  - type: script
+    scripts:
+      - fix-sysusers.sh
 
   # ── Stable kernel (kernel-vanilla/stable) ────────────────────────────────
   # Replaces the base kernel with latest upstream stable release.
