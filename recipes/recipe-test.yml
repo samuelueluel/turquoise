@@ -160,13 +160,15 @@ modules:
         # dex: not in Fedora repos — XDG Autostart launcher, add via script if needed
 
   # ── Display manager ───────────────────────────────────────────────────────
-  - type: dnf
-    install:
-      install-weak-deps: false
-      packages:
-        - greetd # Minimal and flexible login manager daemon
-        - gtkgreet # GTK based greeter for greetd
-        - cage # Wayland kiosk compositor (runs gtkgreet)
+  # (Built from source via build-ly.sh)
+  # Replaced by ly:
+  # - type: dnf
+  #   install:
+  #     install-weak-deps: false
+  #     packages:
+  #       - greetd # Minimal and flexible login manager daemon
+  #       - gtkgreet # GTK based greeter for greetd
+  #       - cage # Wayland kiosk compositor (runs gtkgreet)
 
   # ── Terminals + shell ─────────────────────────────────────────────────────
   # Note: starship and fzf-tab managed via dotfiles; most CLI stuff in Brewfile
@@ -454,6 +456,7 @@ modules:
     install:
       install-weak-deps: false
       packages:
+        - zig # Zig compiler (required for ly)
         - cargo # Rust package manager
         - rust # Rust compiler
         - gtk3-devel # GTK3 development headers
@@ -483,6 +486,11 @@ modules:
   - type: script
     scripts:
       - build-nirius.sh
+
+  # ── Build ly from source ──────────────────────────────────────────────────
+  - type: script
+    scripts:
+      - build-ly.sh
 
   # ── Build swayosd from source ─────────────────────────────────────────────
   # erikreider/swayosd COPR does not publish Fedora 44 builds.
@@ -604,6 +612,7 @@ modules:
   - type: dnf
     remove:
       packages:
+        - zig # Remove Zig compiler
         - cargo # Remove Rust package manager
         - rust # Remove Rust compiler
         - rust-std-static # Remove Rust standard library
@@ -634,24 +643,25 @@ modules:
         - cabextract # Remove cabextract
         - policycoreutils-python-utils # Remove semanage utility
 
-  # ── Configure greetd + gtkgreet ───────────────────────────────────────────
-  - type: script
-    scripts:
-      - setup-greetd.sh
+  # ── Configure greetd + gtkgreet (REPLACED BY ly) ───────────────────────────
+  # - type: script
+  #   scripts:
+  #     - setup-greetd.sh
 
   # ── Custom SELinux policy ─────────────────────────────────────────────────
   # Allow xdm_t (greetd) to start/status systemd unit files.
   # Needed if niri-session triggers systemctl --user under the xdm_t context.
   - type: script
     scripts:
-      - setup-selinux.sh
+      - setup-selinux-test.sh
       - hide-duplicate-desktops.sh
 
   # ── Systemd services ──────────────────────────────────────────────────────
   - type: systemd
     system:
       enabled:
-        - greetd.service
+        - ly.service
+        # - greetd.service # REPLACED BY ly
         - bluetooth.service
         - libvirtd.socket
         - waydroid-container.service
@@ -667,9 +677,10 @@ modules:
         # gdm.service and sddm.service removed: not present in base
         - rpm-ostreed-automatic.timer
         - rpm-ostree-countme.timer
-        - flatpak-system-update.timer
-        - flatpak-user-update.timer
-        - brew-update.timer
+        # Removed: these timers do not exist in the fedora-bootc base image
+        # - flatpak-system-update.timer
+        # - flatpak-user-update.timer
+        # - brew-update.timer
     user:
       enabled:
         # dropbox.service: Dropbox RPM doesn't ship a systemd unit; use XDG autostart instead
