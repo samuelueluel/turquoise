@@ -19,15 +19,21 @@ cd "$TEMP_DIR"
 
 # 3. Build and install
 # We use the provided build system
-zig build
-zig build install --prefix /usr
+zig build -Doptimize=ReleaseSafe
 
-# 4. Manual installation of systemd unit and config (if zig build doesn't handle /etc)
-# The zig build usually puts things in /usr/bin and /usr/lib
-# We ensure the config and service are in the right places for Fedora
+# 4. Manual installation of systemd unit and config
+# Note: Upstream uses ly@.service now.
 mkdir -p /etc/ly
 cp res/config.ini /etc/ly/
-cp res/ly.service /usr/lib/systemd/system/
+mkdir -p /usr/lib/systemd/system/
+cp res/ly@.service /usr/lib/systemd/system/
+
+# Replace placeholders in the service file if they exist
+sed -i 's|\$PREFIX_DIRECTORY|/usr|g' /usr/lib/systemd/system/ly@.service
+sed -i 's|\$EXECUTABLE_NAME|ly|g' /usr/lib/systemd/system/ly@.service
+
+# Install the binary
+cp zig-out/bin/ly /usr/bin/
 
 echo "ly built and installed to /usr/bin/ly"
 rm -rf "$TEMP_DIR"

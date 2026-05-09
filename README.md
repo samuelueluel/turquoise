@@ -67,7 +67,7 @@ Log out and back in after setup to activate the new shell and Homebrew PATH.
 > [!IMPORTANT]
 > **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the niri keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop. App-specific keybinds are found in their config files and below.
 
-An **Alt+WASD** navigation scheme is used across apps. Many default keybinds are remapped or disabled accordingly. Below is not exhaustive. 
+The following are applied by `sjust`. An **Alt+WASD** navigation scheme is used across apps. Many default keybinds are remapped or disabled accordingly. Below is not exhaustive. 
 
 ### Ghostty
 

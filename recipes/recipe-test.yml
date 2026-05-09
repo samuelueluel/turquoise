@@ -665,7 +665,7 @@ modules:
   - type: systemd
     system:
       enabled:
-        - ly.service
+        - ly@tty2.service
         # - greetd.service # REPLACED BY ly
         - bluetooth.service
         - libvirtd.socket
