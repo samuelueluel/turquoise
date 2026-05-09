@@ -15,10 +15,10 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 |---|---|
 | Compositor | niri |
 | Bar | waybar |
-| App launcher | fsel |
+| Dedicated launcher and search | television (see `sjust brew`; fsel is pre-brew backup) |
 | Display manager | greetd + gtkgreet |
-| Shell | zsh + starship |
-| Terminals | ghostty (primary), kitty |
+| Shell | zsh + starship (see `sjust brew` and `sjust system`)|
+| Terminals | ghostty (primary), kitty (lobatimized for TUIs)|
 | Editor | zed |
 | Browsers | zen, helium |
 | File manager | yazi, nemo |
@@ -36,7 +36,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 
 ## Configuration
 
-System-wide default configs for niri and waybar are baked in as fallbacks, active until user dotfiles are applied. Optional user-level configuration is handled by `sjust`. All configuration files and scripts it applies are included in the image, tracking my personal [dotfiles repo](https://github.com/samuelueluel/dotfiles).
+System-wide default configs for niri and waybar are baked in as fallbacks, active until user dotfiles are applied. Optional user-level configuration is handled by `sjust`. All configuration files and scripts it applies are included in the image, tracking my personal [dotfiles repo](https://github.com/samuelueluel/dotfiles). This means `sjust` changes over time.
 
 > [!IMPORTANT]
 > `sjust` is meant for fresh installs without existing dotfiles. Beware of accidently overwriting your files.
@@ -65,9 +65,9 @@ Log out and back in after setup to activate the new shell and Homebrew PATH.
 ## Keybinds
 
 > [!IMPORTANT]
-> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Press **Mod+/** for the niri keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop. App-specific keybinds are found in their config files and below.
+> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). **Alt+Space** is rebound to Enter, though Enter still works. Press **Mod+/** for the niri keybind dashboard before doing anything else, or you will have no idea how to navigate the desktop. App-specific keybinds are found in their config files and below.
 
-The following are applied by `sjust`. An **Alt+WASD** navigation scheme is used across apps. Many default keybinds are remapped or disabled accordingly. Below is not exhaustive. 
+The following are applied by `sjust`. Keybinds tend to fall into a left-hand cluster, for example, **Alt+WASD** for moving the cursor. Below is not exhaustive. 
 
 ### Ghostty
 
@@ -127,6 +127,7 @@ This assumes the full `sjust` sequence has been run and extensions enabled.
 |---|---|
 | Alt+W / S | Move up / down tab list (custom extension) |
 | Alt+A / D | Next / previous workspace |
+| Alt+Q / E | Back / forward in tab history|
 | Ctrl+Space | Command palette |
 | Ctrl+T / Q | New tab / close tab |
 | Ctrl+Shift+Q | Open last closed tab |

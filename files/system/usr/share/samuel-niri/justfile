@@ -45,14 +45,17 @@ zen:
     # Create profile directories
     mkdir -p "{{ZEN_DIR}}/zen.personal" "{{ZEN_DIR}}/zen.utility" "{{ZEN_DIR}}/zen.work"
 
-    # Write profiles.ini directly — avoids -CreateProfile adding a random-hash prefix
-    # to the first profile it creates, which would make the --profile path in the
-    # .desktop launchers not match and trigger a "profile not found" warning.
+    # Write profiles.ini and installs.ini — the Install block and installs.ini
+    # ensure that Zen doesn't create a new hashed profile on rebase/update.
+    # The hash 544180EF0598BAEE is specific to the /usr/bin/zen-browser path.
     printf '%s\n' '[General]' 'StartWithLastProfile=1' 'Version=2' '' \
         '[Profile0]' 'Name=personal' 'IsRelative=1' 'Path=zen.personal' 'Default=1' '' \
         '[Profile1]' 'Name=utility' 'IsRelative=1' 'Path=zen.utility' '' \
-        '[Profile2]' 'Name=work' 'IsRelative=1' 'Path=zen.work' \
+        '[Profile2]' 'Name=work' 'IsRelative=1' 'Path=zen.work' '' \
+        '[Install544180EF0598BAEE]' 'Default=zen.personal' \
         > "{{ZEN_DIR}}/profiles.ini"
+
+    printf '%s\n' '[544180EF0598BAEE]' 'Default=zen.personal' > "{{ZEN_DIR}}/installs.ini"
 
     declare -A ICONS=( ["personal"]="/usr/share/icons/Papirus/48x48/apps/a7xpg.svg" ["utility"]="/usr/share/icons/Papirus/48x48/apps/braindump.svg" ["work"]="/usr/share/icons/Papirus/48x48/apps/applications-office.svg" )
     declare -A NAMES=( ["personal"]="Personal" ["utility"]="Utility" ["work"]="Work" )
