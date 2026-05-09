@@ -162,13 +162,13 @@ modules:
   # ── Display manager ───────────────────────────────────────────────────────
   # (Built from source via build-ly.sh)
   # Replaced by ly:
-  # - type: dnf
-  #   install:
-  #     install-weak-deps: false
-  #     packages:
-  #       - greetd # Minimal and flexible login manager daemon
-  #       - gtkgreet # GTK based greeter for greetd
-  #       - cage # Wayland kiosk compositor (runs gtkgreet)
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - greetd # Minimal and flexible login manager daemon
+        - gtkgreet # GTK based greeter for greetd
+        - cage # Wayland kiosk compositor (runs gtkgreet)
 
   # ── Terminals + shell ─────────────────────────────────────────────────────
   # Note: starship and fzf-tab managed via dotfiles; most CLI stuff in Brewfile
@@ -491,9 +491,9 @@ modules:
       - build-nirius.sh
 
   # ── Build ly from source ──────────────────────────────────────────────────
-  - type: script
-    scripts:
-      - build-ly.sh
+  # - type: script
+  #   scripts:
+  #     - build-ly.sh
 
   # ── Build swayosd from source ─────────────────────────────────────────────
   # erikreider/swayosd COPR does not publish Fedora 44 builds.
@@ -649,9 +649,9 @@ modules:
         - policycoreutils-python-utils # Remove semanage utility
 
   # ── Configure greetd + gtkgreet (REPLACED BY ly) ───────────────────────────
-  # - type: script
-  #   scripts:
-  #     - setup-greetd.sh
+  - type: script
+    scripts:
+      - setup-greetd.sh
 
   # ── Custom SELinux policy ─────────────────────────────────────────────────
   # Allow xdm_t (greetd) to start/status systemd unit files.
@@ -665,8 +665,8 @@ modules:
   - type: systemd
     system:
       enabled:
-        - ly@tty2.service
-        # - greetd.service # REPLACED BY ly
+        # - ly@tty2.service
+        - greetd.service # REPLACED BY ly
         - bluetooth.service
         - libvirtd.socket
         - waydroid-container.service

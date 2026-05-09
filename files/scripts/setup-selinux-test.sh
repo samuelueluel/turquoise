@@ -3,15 +3,7 @@
 # to start/status systemd unit files.
 set -euo pipefail
 
-echo "Configuring SELinux for ly display manager (TEST RECIPE)..."
-
-# 1. Ensure the ly binary is correctly labeled as a display manager exec
-# This allows the process to transition to the xdm_t domain.
-if [ -f /usr/bin/ly ]; then
-    echo "Labeling /usr/bin/ly as xdm_exec_t..."
-    semanage fcontext -a -t xdm_exec_t "/usr/bin/ly" || true
-    restorecon -v /usr/bin/ly || true
-fi
+echo "Configuring SELinux for greetd display manager (TEST RECIPE)..."
 
 echo "Installing custom SELinux policy: xdm_t -> systemd_unit_file_t:service..."
 
