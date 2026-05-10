@@ -53,6 +53,8 @@ System-wide default configs for niri and waybar are baked in as fallbacks, activ
 | `sjust system` | Adds user to required groups, sets zsh as default shell |
 | `sjust swap` | Replaces default zRAM with a 16GB swap file on `/var` |
 | `sjust update` | Manually triggers the automatic system update with additional housecleaning |
+| `sjust obsidian-cli` | Sets up the Obsidian CLI wrapper |
+| `sjust obsidian-vault` | Configures the Obsidian vault name and path for television search |
 
 > [!IMPORTANT]
 > `sjust chezmoi` must run before `sjust brew` because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional. If you run them, you must run `sjust zen` before `sjust chezmoi`, and then run `sjust zen-extensions` after `sjust chezmoi`.

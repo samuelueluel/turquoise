@@ -287,6 +287,20 @@ obsidian-cli:
 
     echo "Done. Launch Obsidian to activate the socket, then test with: obsidian files"
 
+# Configure Obsidian vault name and path (updates chezmoi data)
+obsidian-vault name path:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    ABS_PATH=$(realpath -m "{{path}}")
+    DATA_FILE="{{HOME}}/dotfiles/.chezmoidata.yaml"
+    mkdir -p "$(dirname "$DATA_FILE")"
+    printf "obsidian:\n  vault_name: \"{{name}}\"\n  vault_path: \"$ABS_PATH\"\n" > "$DATA_FILE"
+    echo "Updated Obsidian vault configuration in $DATA_FILE"
+    echo "Vault Name: {{name}}"
+    echo "Vault Path: $ABS_PATH"
+    echo "Applying changes..."
+    chezmoi apply --force
+
 # Install/upgrade headroom-ai[proxy] via pipx, upgrade all pipx tools, and back up Claude + Gemini config
 # Backup requires private SSH key (not in setup); skipped gracefully if unavailable
 llm:
