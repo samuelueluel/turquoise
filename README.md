@@ -29,9 +29,6 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 | Flatpaks | `sjust flatpaks` |
 | Automation | Daily image + Flatpak + Homebrew + Distrobox updates via uupd, random wallpaper on login, trash and clipboard history emptied on boot |
 
-> [!NOTE]
-> VM installs may black-screen due to niri's OpenGL acceleration requirement.
-
 ---
 
 ## Configuration

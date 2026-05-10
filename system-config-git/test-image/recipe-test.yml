@@ -503,11 +503,6 @@ modules:
     scripts:
       - install-zed.sh
 
-  # ── Install systemd-manager-tui (Official Binary) ────────────────────────
-  - type: script
-    scripts:
-      - install-systemd-manager-tui.sh
-
   # ── Install Zen Browser (Native Binary) ──────────────────────────────────
   - type: script
     scripts:
