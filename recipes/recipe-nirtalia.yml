@@ -126,9 +126,9 @@ modules:
       packages:
         - wdisplays # GUI for managing Wayland displays
         - wf-recorder # Wayland screen recorder
-        - xdg-desktop-portal-gtk # GTK backend for XDG desktop portals
+        # xdg-desktop-portal-gtk: already installed in fedora-bootc base (injected above)
         - xdg-desktop-portal-gnome # screencasting — Niri uses Smithay, not wlroots
-        - xwayland-satellite # Xwayland manager outside of wlroots
+        # xwayland-satellite: already installed in fedora-bootc base (injected above)
         - wlsunset # Day/night gamma adjustments — used by noctalia NightLightService
         - kanshi # Dynamic display configuration
         - grim # Screen image grabber for Wayland
@@ -136,15 +136,15 @@ modules:
         - wl-clipboard # Command-line copy/paste utilities for Wayland
         - polkit-kde # GUI polkit authentication agent
         - xdg-user-dirs # Tool to help manage user directories
-        - xdg-utils # Desktop integration utilities
+        # xdg-utils: already installed in fedora-bootc base (injected above)
         - gtk4-layer-shell # Layer shell for GTK4 (used by some wayland tools)
         - network-manager-applet # NetworkManager system tray applet
         - libappindicator-gtk3 # Allow apps to show icons in system tray
         # nirius: built from source via build-nirius.sh (Terra is behind upstream)
-        - jq # JSON parsing for Niri IPC scripts
-        - socat # IPC socket listener for Niri event-driven updates
+        # jq: already installed in fedora-bootc base (injected above)
+        # socat: already installed in fedora-bootc base (injected above)
         - pamixer # CLI volume control for scroll/click actions
-        - imagemagick # Required by noctalia-shell for wallpaper/template processing
+        - ImageMagick # Required by noctalia-shell for wallpaper/template processing
 
   # ── Display manager ───────────────────────────────────────────────────────
   - type: dnf
