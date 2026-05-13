@@ -97,7 +97,7 @@ chezmoi:
     fi
     chezmoi init --source="$HOME/dotfiles"
     chezmoi apply --force
-    systemctl --user enable empty-trash.service battery-notify.service || true
+    systemctl --user enable empty-trash.service || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus
     gsettings set org.gnome.desktop.interface cursor-theme oreo_spark_orange_cursors
     systemctl --user restart xdg-desktop-portal-gtk.service 2>/dev/null || true

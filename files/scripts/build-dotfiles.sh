@@ -30,6 +30,5 @@ chmod +x \
     /usr/bin/niri-shader \
     /usr/bin/niri_parse_keybinds.py \
     /usr/bin/niri-tile-toggle \
-    /usr/bin/battery-notify.sh \
     /usr/bin/waybar-tray-toggle \
     /usr/bin/smart-close.sh
