@@ -26,7 +26,8 @@ jobs:
       fail-fast: false
       matrix:
         recipe:
-          - recipe.yml
+          # - recipe.yml
+          - recipe-nirtalia.yml
     steps:
       - name: Build Custom Image
         uses: blue-build/github-action@main # testing --- changes v1 to main
