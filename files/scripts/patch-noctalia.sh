@@ -31,11 +31,13 @@ import sys, pathlib
 path = pathlib.Path(sys.argv[1])
 src = path.read_text()
 
-# --- 1) Icon spacing: marginXXS (~2px) -> marginS (~6px) -----------------
+# --- 1) Icon spacing: marginXXS (~2px) -> 14px -----------------
+# Wider gap leaves breathing room next to the focused-icon highlight,
+# which extends 4px beyond the icon on each side (see patch 2).
 old_col = "columnSpacing: isVerticalBar ? 0 : Style.marginXXS"
-new_col = "columnSpacing: isVerticalBar ? 0 : Style.marginS"
+new_col = "columnSpacing: isVerticalBar ? 0 : 14"
 old_row = "rowSpacing: isVerticalBar ? Style.marginXXS : 0"
-new_row = "rowSpacing: isVerticalBar ? Style.marginS : 0"
+new_row = "rowSpacing: isVerticalBar ? 14 : 0"
 
 for old, new in [(old_col, new_col), (old_row, new_row)]:
     if old not in src:
@@ -52,6 +54,8 @@ old_geom = (
 )
 new_geom = (
     "                    anchors.fill: parent\n"
+    "                    anchors.leftMargin: -4\n"
+    "                    anchors.rightMargin: -4\n"
     "                    z: -1"
 )
 if old_geom not in src:
