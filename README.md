@@ -37,7 +37,9 @@ System-wide default configs for niri and waybar are baked in as fallbacks, activ
 
 > [!IMPORTANT]
 > `sjust` is meant for fresh installs without existing dotfiles. Beware of accidently overwriting your files. 
-> `sjust chezmoi` must run before `sjust brew` because brew depends on `~/.Brewfile` that chezmoi puts in place. `sjust zen` and `sjust zen-extensions` are both optional. If you run them, you must run `sjust zen` before `sjust chezmoi`, and then run `sjust zen-extensions` after `sjust chezmoi`. `sjust` recipes not listed in this README but present in the justfile should never be used. **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). **Alt+Space** is rebound to Enter, though Enter still works. After running `sjust brew`, television will be installed with a channel dedicated to niri keybinds, accessible with **Mod+Space**. Running `sjust chezmoi` introduces many idiosyncratic, app-specific keybinds that are found in their config files. 
+> **CapsLock** is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). **Alt+Space** is rebound to Enter. After running `sjust brew`, tv/television will be installed with a channel dedicated to niri keybinds, accessible with **Mod+Space**. Running `sjust chezmoi` introduces many idiosyncratic, app-specific keybinds that are found in their config files. 
+
+`sjust` recipes not listed in this README but present in the justfile should never be used. 
 
 | Recipe | Description |
 |---|---|
