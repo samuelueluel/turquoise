@@ -135,11 +135,11 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - niri
-        - dropbox
-        - uupd
-        - noctalia-shell
-        - pipx
+        - niri # scrolling Wayland compositor
+        - dropbox # Dropbox cloud storage client
+        - uupd # unified updater for uBlue images
+        - noctalia-shell # desktop shell + bar (noctalia dep: this IS noctalia)
+        - pipx # install Python CLI tools in isolated environments
 
   # ── Wayland compositor stack ──────────────────────────────────────────────
   # swayosd: COPR has no Fedora 44 builds; built from source via build-swayosd.sh
@@ -148,23 +148,22 @@ modules:
       install-weak-deps: false
       packages:
         - wdisplays # GUI for managing Wayland displays
-        - wf-recorder # Wayland screen recorder
         - xdg-desktop-portal-gtk # think already in base-main
         - xdg-desktop-portal-gnome # screencasting — Niri uses Smithay, not wlroots
-        - xwayland-satellite
+        - xwayland-satellite # runs XWayland as a rootless Wayland client for X11 app support
         # swayidle/swaylock removed: noctalia-shell handles idle (IdleService via
         # ext-idle-notify-v1), session lock, and night light natively.
-        - wlsunset
-        - kanshi
-        - grim
-        - slurp
-        - wl-clipboard # think already in base-main
-        - xdg-user-dirs
-        - xdg-utils # think already in base-main
-        - gtk4-layer-shell
+        - wlsunset # blue light filter / night light — needed by noctalia
+        - kanshi # autorandr-style display profile switcher for Wayland
+        - grim # screenshot capture for Wayland
+        - slurp # interactive region/window selection (used with grim)
+        - wl-clipboard # think already in base-main; wl-copy/wl-paste clipboard tools
+        - xdg-user-dirs # creates/manages XDG dirs (Downloads, Documents, etc.)
+        - xdg-utils # think already in base-main; xdg-open and desktop integration helpers
+        - gtk4-layer-shell # GTK4 layer-shell for Wayland panels/overlays — noctalia dep
         # network-manager-applet removed: noctalia-shell handles network/VPN in its control center
         # hyprpicker: not in Fedora repos — add via script if needed
-        - libappindicator-gtk3
+        - libappindicator-gtk3 # legacy AppIndicator/system-tray support for apps — noctalia dep
         # nirius: built from source via build-nirius.sh (Terra is behind upstream)
         - jq # JSON parsing for Niri IPC scripts — think already in base-main
         - matugen # material-you color generation for noctalia
@@ -176,9 +175,9 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - greetd
-        - gtkgreet
-        - cage
+        - greetd # minimal display manager daemon (replaces GDM/SDDM)
+        - gtkgreet # GTK login greeter for greetd
+        - cage # minimal single-app Wayland compositor; runs gtkgreet in isolation
 
   # ── Terminals + shell ─────────────────────────────────────────────────────
   # Note: starship and fzf-tab managed via dotfiles; most CLI stuff in Brewfile
@@ -189,16 +188,16 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - ghostty
+        - ghostty # primary GPU-accelerated terminal emulator
 
   - type: dnf
     install:
       install-weak-deps: false
       packages:
-        - kitty
-        - zsh
-        - zsh-autosuggestions
-        - zsh-syntax-highlighting
+        - kitty # GPU-accelerated terminal; used specifically for yazi file previews
+        - zsh # Z shell (primary interactive shell)
+        - zsh-autosuggestions # fish-like command suggestions based on history
+        - zsh-syntax-highlighting # real-time command syntax highlighting in zsh
         - bash-completion # think already in base-main
         # zoxide → homebrew: zoxide
         - nano # think already in base-main
@@ -211,19 +210,19 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - nemo
+        - nemo # Cinnamon file manager (GUI backup to yazi)
         # resvg: not in Fedora repos — yazi SVG previews unavailable without it
-        - udiskie
-        - trash-cli
-        - unrar
-        - unzip # think already in base-main
-        - p7zip
-        - gvfs-mtp
-        - gvfs-gphoto2
-        - gvfs-smb
-        - gvfs-nfs
-        - gvfs-fuse
-        - gvfs-archive
+        - udiskie # auto-mounts removable drives via udisks2
+        - trash-cli # XDG-compliant trash from the command line
+        - unrar # RAR archive extractor
+        - unzip # think already in base-main; ZIP archive extractor
+        - p7zip # 7-Zip archive tool (7z format + many others)
+        - gvfs-mtp # GVFS backend for MTP (Android phones, media players)
+        - gvfs-gphoto2 # GVFS backend for PTP/digital cameras
+        - gvfs-smb # GVFS backend for SMB/Windows network shares
+        - gvfs-nfs # GVFS backend for NFS mounts
+        - gvfs-fuse # exposes GVFS mounts as FUSE filesystem paths
+        - gvfs-archive # GVFS backend for browsing archives as directories
         - ntfs-3g # think already in base-main
         - exfatprogs # think already in base-main
         - dosfstools # think already in base-main
@@ -253,13 +252,13 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - brightnessctl
+        - brightnessctl # controls screen/keyboard backlight brightness
         - bluez # think already in base-main
         # blueman + bluez-tools removed: noctalia-shell bluetooth panel covers pairing/connecting;
         # bluetoothctl (from bluez) covers CLI needs
-        - upower # think already in base-main
-        - power-profiles-daemon
-        - fwupd # think already in base-main
+        - upower # think already in base-main; battery/power state abstraction
+        - power-profiles-daemon # switches CPU power profiles (balanced/performance/power-saver)
+        - fwupd # think already in base-main; firmware update framework
         - fprintd # fingerprint daemon
         - fprintd-pam # provides pam_fprintd.so; satisfies PAM fingerprint stack
         # keyd: not in Fedora repos; built from source via build-keyd.sh
@@ -276,8 +275,8 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - NetworkManager-openvpn
-        - NetworkManager-openconnect
+        - NetworkManager-openvpn # OpenVPN plugin for NetworkManager
+        - NetworkManager-openconnect # Cisco AnyConnect / OpenConnect VPN plugin for NetworkManager
         # -gnome VPN plugins removed: GTK dialogs only needed by nm-applet (removed)
         - avahi # think already in base-main
         - nss-mdns # think already in base-main
@@ -285,8 +284,8 @@ modules:
         - openssh # think already in base-main
         - wget # think already in base-main
         - wireless-regdb # think already in base-main
-        - firewall-config
-        - firewall-applet
+        - firewall-config # GTK GUI for managing firewalld rules
+        - firewall-applet # system tray applet showing firewall status
 
   # ── Printing ──────────────────────────────────────────────────────────────
   - type: dnf
@@ -312,12 +311,12 @@ modules:
         # yt-dlp → homebrew: yt-dlp
         - ffmpeg # think already in base-main
         - gstreamer1-plugin-libav # think already in base-main
-        - gstreamer1-vaapi
+        - gstreamer1-vaapi # VA-API hardware video decode/encode plugin for GStreamer
         - gstreamer1-plugins-good # think already in base-main
         - gstreamer1-plugins-bad-free # think already in base-main
-        - gstreamer1-plugins-ugly
+        - gstreamer1-plugins-ugly # GStreamer plugins with patent/licensing issues (MP3, etc.)
         - libdvdcss # from RPM Fusion nonfree-tainted
-        - libopenraw
+        - libopenraw # RAW camera image decoding library (used by image viewers/thumbnailers)
         - libgsf # think already in base-main
         - poppler-glib # think already in base-main
 
@@ -346,25 +345,25 @@ modules:
         - just # think already in base-main
         - smartmontools # think already in base-main
         - usbutils # think already in base-main
-        - inxi
+        - inxi # full system info report (CPU, GPU, RAM, kernel, etc.)
         - dmidecode # think already in base-main
-        - hdparm
-        - sg3_utils
-        - lsscsi
-        - sysfsutils
+        - hdparm # get/set ATA disk parameters and benchmark read speed
+        - sg3_utils # SCSI/SAS/NVMe command-line utilities
+        - lsscsi # lists SCSI/SATA/NVMe devices
+        - sysfsutils # query and configure sysfs kernel attributes
         - whois # think already in base-main
         - ethtool # think already in base-main
         - bind-utils # think already in base-main
         - iputils # think already in base-main
         - hostname # think already in base-main
-        - inotify-tools
-        - plocate
+        - inotify-tools # inotifywait/inotifywatch for filesystem event monitoring in scripts
+        - plocate # fast file search via an indexed database (replaces mlocate)
         # fastfetch → homebrew: fastfetch
         # duf → homebrew: duf
         # glances → homebrew: glances
         # tldr → homebrew: tldr
         - man-db # think already in base-main
-        - hwinfo
+        - hwinfo # detailed hardware probe (more verbose than lshw/inxi)
         # gnome-keyring (from base-main) handles org.freedesktop.secrets for browser password storage
         # kf6-kwallet / kf6-kwallet-pam: removed — no PAM auto-unlock in Fedora 43 and gnome-keyring covers the use case
         - python3 # think already in base-main
@@ -387,14 +386,14 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - papirus-icon-theme
+        - papirus-icon-theme # flat/material icon theme
         - papirus-icon-theme-dark # Needed for dark GTK themes
-        - adw-gtk3-theme
+        - adw-gtk3-theme # Adwaita-style GTK3 theme (matches libadwaita apps)
         - xapp-symbolic-icons # Fixes broken symbolic icons in Nemo UI
-        - qt6ct
-        - qt5ct
-        - qt6-qtwayland
-        - kvantum
+        - qt6ct # Qt6 appearance/theme configuration tool (for non-KDE sessions)
+        - qt5ct # Qt5 appearance/theme configuration tool (for non-KDE sessions)
+        - qt6-qtwayland # Qt6 Wayland platform plugin (required for Qt6 apps under Wayland)
+        - kvantum # SVG-based Qt theme engine with Wayland support
 
   # ── Fonts ─────────────────────────────────────────────────────────────────
   - type: dnf
@@ -403,13 +402,13 @@ modules:
       packages:
         - freetype-freeworld # subpixel hinting + LCD filtering (better than stock Fedora FreeType)
         - ibm-plex-sans-fonts # full family: Light, Regular, SemiBold, Bold, etc.
-        - ibm-plex-mono-fonts
+        - ibm-plex-mono-fonts # IBM Plex monospace (used in Zed editor)
         - google-noto-emoji-fonts # think already in base-main
-        - google-noto-sans-fonts
-        - google-noto-serif-fonts
+        - google-noto-sans-fonts # Noto sans-serif for broad Unicode coverage
+        - google-noto-serif-fonts # Noto serif for broad Unicode coverage
         - google-noto-sans-cjk-fonts # think already in base-main
-        - fontawesome-fonts-all
-        - liberation-fonts
+        - fontawesome-fonts-all # Font Awesome icon font (web/UI icons as glyphs)
+        - liberation-fonts # metric-compatible replacements for Arial, Times New Roman, Courier
 
   - type: fonts
     fonts:
@@ -424,7 +423,7 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - virt-manager
+        - virt-manager # GUI for managing KVM/QEMU virtual machines
 
   # ── Android (Waydroid) ────────────────────────────────────────────────────
   # Binder is built into the vanilla kernel (CONFIG_ANDROID_BINDER_IPC=y).
@@ -434,7 +433,7 @@ modules:
     install:
       install-weak-deps: false
       packages:
-        - waydroid
+        - waydroid # runs Android apps in a container via the binder kernel module
         - lzip # needed by waydroid-script (ARM translation + GAPPS installer)
 
   # ── Flatpaks ──────────────────────────────────────────────────────────────
