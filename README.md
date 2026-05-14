@@ -1,6 +1,6 @@
-# samuel-niri
+# turquoise
 
-[![Build](https://github.com/samuelueluel/samuel-niri/actions/workflows/build.yml/badge.svg)](https://github.com/samuelueluel/samuel-niri/actions/workflows/build.yml)
+[![Build](https://github.com/samuelueluel/turquoise/actions/workflows/build.yml/badge.svg)](https://github.com/samuelueluel/turquoise/actions/workflows/build.yml)
 
 Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-build/) on top of [Universal Blue's base-main](https://github.com/ublue-os/main/pkgs/container/base-main), using the [niri](https://github.com/niri-wm/niri) compositor.
 

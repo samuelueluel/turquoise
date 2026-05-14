@@ -1,4 +1,4 @@
-name: samuel-nirtalia
+name: turquoise
 description: Fedora Atomic image with niri
 base-image: ghcr.io/ublue-os/base-main # This will change in the future
 image-version: latest
