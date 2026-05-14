@@ -152,9 +152,8 @@ modules:
         - xdg-desktop-portal-gtk # think already in base-main
         - xdg-desktop-portal-gnome # screencasting — Niri uses Smithay, not wlroots
         - xwayland-satellite
-        # swayidle/swaylock removed: noctalia-shell handles idle (IdleService via
-        # ext-idle-notify-v1) and session lock natively.
-        - wlsunset
+        # swayidle/swaylock/wlsunset removed: noctalia-shell handles idle (IdleService via
+        # ext-idle-notify-v1), session lock, and night light natively.
         - kanshi
         - grim
         - slurp
@@ -162,7 +161,7 @@ modules:
         - xdg-user-dirs
         - xdg-utils # think already in base-main
         - gtk4-layer-shell
-        - network-manager-applet
+        # network-manager-applet removed: noctalia-shell handles network/VPN in its control center
         # hyprpicker: not in Fedora repos — add via script if needed
         - libappindicator-gtk3
         # nirius: built from source via build-nirius.sh (Terra is behind upstream)
@@ -256,8 +255,8 @@ modules:
       packages:
         - brightnessctl
         - bluez # think already in base-main
-        - blueman
-        - bluez-tools
+        # blueman + bluez-tools removed: noctalia-shell bluetooth panel covers pairing/connecting;
+        # bluetoothctl (from bluez) covers CLI needs
         - upower # think already in base-main
         - power-profiles-daemon
         - fwupd # think already in base-main
@@ -279,8 +278,7 @@ modules:
       packages:
         - NetworkManager-openvpn
         - NetworkManager-openconnect
-        - NetworkManager-openvpn-gnome
-        - NetworkManager-openconnect-gnome
+        # -gnome VPN plugins removed: GTK dialogs only needed by nm-applet (removed)
         - avahi # think already in base-main
         - nss-mdns # think already in base-main
         - dnsmasq # used by libvirt for VM networking — think already in base-main
