@@ -36,7 +36,7 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 My config for niri is active until user config is applied. Optional configuration is handled by `sjust`. All configuration files and scripts it applies are included in the image, tracking my personal [dotfiles repo](https://github.com/samuelueluel/dotfiles). This means `sjust` changes over time.
 
 > [!IMPORTANT]
-> Fresh installs can navigate to ghostty through the Noctalia launcher button or Mod+` keybind.  
+> Fresh installs can navigate to ghostty through the Noctalia launcher button or Mod+Grave keybind.  
 > CapsLock is rebound to Mod (Super/Start). The physical Mod key becomes Menu (`XF86MenuKB` in niri config). Alt+Space is rebound to Enter. 
 > `sjust` is meant for fresh installs without existing dotfiles. Beware of accidently overwriting your files.
 > After running `sjust brew`, tv/television will be installed with a channel dedicated to niri keybinds, accessible with Mod+Space. Running `sjust chezmoi` introduces many idiosyncratic, app-specific keybinds that are found in their config files. 
