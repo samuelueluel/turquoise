@@ -131,7 +131,6 @@ modules:
       copr:
         - yalter/niri # niri compositor
         - ublue-os/packages # uupd unified updater
-        - lionheartp/Hyprland # noctalia-shell-v5
         # terra.repo is baked in via the files module (avoids CI network block)
     install:
       install-weak-deps: false
@@ -139,8 +138,7 @@ modules:
         - niri # scrolling Wayland compositor
         - dropbox # Dropbox cloud storage client
         - uupd # unified updater for uBlue images
-        # - noctalia-shell # desktop shell + bar (noctalia dep: this IS noctalia)
-        - noctalia-shell-v5 # desktop shell + bar — v5 (testing)
+        # noctalia-shell: built from source via build-noctalia.sh
         - pipx # install Python CLI tools in isolated environments
 
   # ── Wayland compositor stack ──────────────────────────────────────────────
@@ -170,6 +168,8 @@ modules:
         - jq # JSON parsing for Niri IPC scripts — think already in base-main
         - matugen # material-you color generation for noctalia
         - gpu-screen-recorder # noctalia screen recording plugin
+        - sdbus-cpp # D-Bus C++ library — noctalia runtime dep (was pulled in by COPR RPM)
+        - jemalloc # memory allocator — noctalia links against this when present at build time
         # dex: not in Fedora repos — XDG Autostart launcher, add via script if needed
 
   # ── Display manager ───────────────────────────────────────────────────────
@@ -446,12 +446,16 @@ modules:
   # All build scripts assume these are pre-installed; cleaned up afterwards.
   #   cargo, rust, rust-std-static, binutils, cpp  ← Rust builds (nirius, cclip, rmpcd, keyd, termfilechooser)
   #   gtk3-devel, glib2-devel                      ← nwg-look
-  #   meson, ninja-build, gcc                      ← termfilechooser, cclip, keyd
+  #   meson, ninja-build, gcc, gcc-c++             ← termfilechooser, cclip, keyd, noctalia
   #   wayland-devel, sqlite-devel, xxhash-devel    ← cclip
   #   inih-devel, systemd-devel, scdoc             ← termfilechooser
   #   golang + golang-bin/src/go-filesystem, make  ← nwg-look, bluetuith
   #   cabextract                                   ← install-msfonts
   #   policycoreutils-python-utils                 ← setup-selinux (semanage fallback)
+  #   sdbus-cpp-devel, freetype-devel, fontconfig-devel, cairo-devel, pango-devel,
+  #   librsvg2-devel, libxkbcommon-devel, polkit-devel, pipewire-devel, libcurl-devel,
+  #   jemalloc-devel, mesa-libEGL-devel, mesa-libGLES-devel, libepoxy-devel,
+  #   libwebp-devel, pam-devel                     ← noctalia-shell
   - type: dnf
     install:
       install-weak-deps: false
@@ -463,6 +467,7 @@ modules:
         - meson
         - ninja-build
         - gcc
+        - gcc-c++
         - wayland-devel
         - sqlite-devel
         - xxhash-devel
@@ -475,6 +480,28 @@ modules:
         - policycoreutils-python-utils
         - lz4-devel
         - wayland-protocols-devel
+        - sdbus-cpp-devel
+        - freetype-devel
+        - fontconfig-devel
+        - cairo-devel
+        - pango-devel
+        - librsvg2-devel
+        - libxkbcommon-devel
+        - polkit-devel
+        - pipewire-devel
+        - libcurl-devel
+        - jemalloc-devel
+        - mesa-libEGL-devel
+        - mesa-libGLES-devel
+        - libepoxy-devel
+        - libwebp-devel
+        - pam-devel
+
+  # ── Build noctalia-shell v5 from source ───────────────────────────────────
+  # Replaces the lionheartp/Hyprland COPR RPM; installs to /usr/bin + /usr/share/noctalia/
+  - type: script
+    scripts:
+      - build-noctalia.sh
 
   # ── Build nirius from source ──────────────────────────────────────────────
   # Terra is behind upstream; build directly from the tagged release tarball.
@@ -602,6 +629,7 @@ modules:
         - meson
         - ninja-build
         - gcc
+        - gcc-c++
         - wayland-devel
         - sqlite-devel
         - xxhash-devel
@@ -617,6 +645,22 @@ modules:
         - policycoreutils-python-utils
         - lz4-devel
         - wayland-protocols-devel
+        - sdbus-cpp-devel
+        - freetype-devel
+        - fontconfig-devel
+        - cairo-devel
+        - pango-devel
+        - librsvg2-devel
+        - libxkbcommon-devel
+        - polkit-devel
+        - pipewire-devel
+        - libcurl-devel
+        - jemalloc-devel
+        - mesa-libEGL-devel
+        - mesa-libGLES-devel
+        - libepoxy-devel
+        - libwebp-devel
+        - pam-devel
 
   # ── Configure greetd + gtkgreet ───────────────────────────────────────────
   - type: script
