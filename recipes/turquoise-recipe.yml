@@ -197,6 +197,8 @@ modules:
       install-weak-deps: false
       packages:
         - kitty # GPU-accelerated terminal; used specifically for yazi file previews
+        - neovim # terminal text editor with Vim keybindings and rich plugin ecosystem
+        - tmux # terminal multiplexer; split panes + persistent sessions (used with neovim REPL workflow)
         - zsh # Z shell (primary interactive shell)
         - zsh-autosuggestions # fish-like command suggestions based on history
         - zsh-syntax-highlighting # real-time command syntax highlighting in zsh
