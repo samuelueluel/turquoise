@@ -565,12 +565,13 @@ modules:
     scripts:
       - install-rmpc.sh
 
-  # ── Install Neptune binary ────────────────────────────────────────────────
-  # Lightweight mechanical keyboard sound simulator written in Go.
-  # Not in Fedora repos; download pre-built binary from GitHub releases.
+  # ── Build wayvibes from source ────────────────────────────────────────────
+  # Wayland-native mechanical keyboard sound simulator (C++, libevdev + miniaudio).
+  # Replaces Neptune (Go, last updated 2023). Not packaged for Fedora; no releases —
+  # built from latest git. Soundpacks (Mechvibes format) configured at user level.
   - type: script
     scripts:
-      - install-neptune.sh
+      - install-wayvibes.sh
 
   # ── Build rmpcd from source ───────────────────────────────────────────────
   # rmpcd is the rmpc companion daemon (MPRIS, Last.fm, lyrics, notifications)
