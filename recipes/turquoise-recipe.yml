@@ -565,6 +565,13 @@ modules:
     scripts:
       - install-rmpc.sh
 
+  # ── Install Neptune binary ────────────────────────────────────────────────
+  # Lightweight mechanical keyboard sound simulator written in Go.
+  # Not in Fedora repos; download pre-built binary from GitHub releases.
+  - type: script
+    scripts:
+      - install-neptune.sh
+
   # ── Build rmpcd from source ───────────────────────────────────────────────
   # rmpcd is the rmpc companion daemon (MPRIS, Last.fm, lyrics, notifications)
   # Not distributed as a pre-built binary; built from source via cargo
