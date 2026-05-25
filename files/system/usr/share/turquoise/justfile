@@ -320,6 +320,30 @@ obsidian-vault name path:
     echo "Applying changes..."
     chezmoi apply --force
 
+# Download mechvibes soundpacks and install patched nk-cream config (not in setup)
+wayvibes-soundpacks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    DEST="$HOME/wayvibes/soundpacks"
+    WORK=$(mktemp -d)
+    trap "rm -rf '$WORK'" EXIT
+
+    command -v wayvibes &>/dev/null || { echo "wayvibes not found — is the image up to date?"; exit 1; }
+
+    echo "Cloning mechvibes audio packs..."
+    git clone --depth=1 --filter=blob:none --sparse https://github.com/hainguyents13/mechvibes.git "$WORK/mechvibes"
+    git -C "$WORK/mechvibes" sparse-checkout set src/audio
+
+    mkdir -p "$DEST"
+    cp -r "$WORK/mechvibes/src/audio/." "$DEST/"
+
+    # Replace nk-cream config.json with our patched version.
+    # The patch adds keycodes 125 and 139, which are what keyd emits for
+    # capslock and the ThinkPad start button (both remapped keys).
+    cp {{SHARE}}/wayvibes/nk-cream-config.json "$DEST/nk-cream/config.json"
+
+    echo "Done — soundpacks installed to $DEST"
+
 # System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
 update:
     #!/usr/bin/env bash
