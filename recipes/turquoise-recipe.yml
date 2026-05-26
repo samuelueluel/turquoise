@@ -309,7 +309,6 @@ modules:
         - beets # music library manager and tagger
         - beets-plugins # extra beets plugins
         - beets-doc # beets documentation
-        - swayimg # Wayland image viewer
         # yt-dlp → homebrew: yt-dlp
         - ffmpeg # think already in base-main
         - gstreamer1-plugin-libav # think already in base-main
