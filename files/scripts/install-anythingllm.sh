@@ -18,9 +18,12 @@ echo "Extracting AppImage..."
 ./anythingllm.AppImage --appimage-extract
 
 # Extracted directory is squashfs-root/
-# Move it to /usr/lib/anythingllm
+# Move it to /usr/lib/anythingllm and ensure world-readable permissions.
+# AppImage extraction runs as root and can leave directories mode 700,
+# which causes desktop shells to hit EACCES when resolving icon paths.
 rm -rf /usr/lib/anythingllm
 mv squashfs-root /usr/lib/anythingllm
+chmod -R a+rX /usr/lib/anythingllm
 
 # Create symlink for the main executable
 # (Checks common naming patterns inside the AppImage)
@@ -34,17 +37,31 @@ else
     ln -sf "$EXE_PATH" /usr/bin/anythingllm
 fi
 
-# Copy the desktop launcher
-DESKTOP_FILE=$(find /usr/lib/anythingllm -maxdepth 1 -name "*.desktop" | head -n 1)
-if [ -n "$DESKTOP_FILE" ]; then
-    cp "$DESKTOP_FILE" /usr/share/applications/anythingllm.desktop
-    sed -i 's|^Exec=.*|Exec=anythingllm %U|' /usr/share/applications/anythingllm.desktop
-    
-    # Configure icon
-    ICON_FILE=$(find /usr/lib/anythingllm -maxdepth 1 -name "*.png" -o -name "*.svg" | head -n 1)
-    if [ -n "$ICON_FILE" ]; then
-        sed -i "s|^Icon=.*|Icon=$ICON_FILE|" /usr/share/applications/anythingllm.desktop
-    fi
+# Copy icon to a standard system path so the .desktop Icon= field uses a bare
+# name (not an absolute path). This prevents crashes in desktop shells that
+# fatally handle a missing/unreadable absolute icon path.
+ICON_FILE=$(find /usr/lib/anythingllm -maxdepth 2 \( -name "*.png" -o -name "*.svg" \) | sort | head -n 1)
+if [ -n "$ICON_FILE" ]; then
+    ICON_EXT="${ICON_FILE##*.}"
+    install -Dm644 "$ICON_FILE" "/usr/share/pixmaps/anythingllm.${ICON_EXT}"
+    ICON_NAME="anythingllm"
+else
+    ICON_NAME="anythingllm"
 fi
+
+# Write the desktop launcher directly — don't rely on the AppImage's bundled
+# .desktop file, which may have stale paths or missing fields.
+cat > /usr/share/applications/anythingllm.desktop << EOF
+[Desktop Entry]
+Name=AnythingLLM
+Comment=A full-stack application for private AI
+Exec=anythingllm %U
+Icon=${ICON_NAME}
+Terminal=false
+Type=Application
+Categories=Office;Utility;
+MimeType=x-scheme-handler/anythingllm;
+StartupWMClass=anythingllm
+EOF
 
 echo "AnythingLLM installed successfully."
