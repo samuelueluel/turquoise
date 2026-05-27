@@ -5,7 +5,7 @@ set -euo pipefail
 
 echo "Installing AnythingLLM (AppImage Extract)..."
 
-URL="https://s3.us-west-1.amazonaws.com/public.useanything.com/latest/AnythingLLMDesktop.AppImage"
+URL="https://cdn.anythingllm.com/latest/AnythingLLMDesktop.AppImage"
 WORK_DIR="$(mktemp -d)"
 trap "rm -rf '$WORK_DIR'" EXIT
 
