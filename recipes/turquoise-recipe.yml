@@ -529,6 +529,11 @@ modules:
     scripts:
       - install-zen-browser.sh
 
+  # ── Install AnythingLLM (Official AppImage) ──────────────────────────────
+  - type: script
+    scripts:
+      - install-anythingllm.sh
+
   # ── Patch noctalia-shell QML ─────────────────────────────────────────────
   # Customizes Taskbar.qml: full-square focused indicator + wider icon spacing.
   # Script fails the build if upstream changes invalidate the patch anchors.
