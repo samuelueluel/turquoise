@@ -288,6 +288,7 @@ modules:
         - wireless-regdb # think already in base-main
         - firewall-config # GTK GUI for managing firewalld rules
         - firewall-applet # system tray applet showing firewall status
+        - tailscale # zero-config mesh VPN
 
   # ── Printing ──────────────────────────────────────────────────────────────
   - type: dnf
@@ -706,6 +707,7 @@ modules:
         - fstrim.timer
         - xfs_scrub_all.timer
         - uupd.timer
+        - tailscaled.service
       disabled:
         # gdm.service and sddm.service removed: not present in F44 base-main
         - flatpak-system-update.timer
