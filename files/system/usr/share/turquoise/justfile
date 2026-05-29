@@ -455,3 +455,32 @@ update:
 
     echo -e "\n\033[32mUpdate sequence complete!\033[0m"
 
+# Fix Btrfs transparent compression on composefs (Fedora 42+ / Bluefin 44+)
+fix-compression:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Applying Btrfs zstd compression workaround..."
+
+    # 1. Update kernel args if not already present
+    if rpm-ostree kargs | grep -q "compress=zstd"; then
+        echo "  Kernel arguments already updated."
+    else
+        echo "  Adding compress=zstd:1 to kernel arguments..."
+        cur=$(rpm-ostree kargs | grep -o 'rootflags=[^ ]*' || true)
+        if [ -n "$cur" ]; then
+            sudo rpm-ostree kargs --delete="$cur" --append="${cur},compress=zstd:1"
+        else
+            sudo rpm-ostree kargs --append=rootflags=subvol=root,compress=zstd:1
+        fi
+    fi
+
+    # 2. Comment out root mount in /etc/fstab if not already commented
+    if grep -E '^[^\#].*\s+/\s+btrfs' /etc/fstab >/dev/null; then
+        echo "  Commenting out root mount in /etc/fstab..."
+        sudo sed -i.bak 's/^\([^#].*\s\+\/\s\+btrfs\)/# \1/' /etc/fstab
+        echo "  /etc/fstab updated (backup saved as /etc/fstab.bak)."
+    else
+        echo "  Root mount in /etc/fstab is already commented out."
+    fi
+
+    echo "Workaround applied. Please reboot your system to activate compression."
