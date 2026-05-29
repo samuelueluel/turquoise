@@ -376,12 +376,23 @@ distroboxes:
       wget -O "$HOME/.config/stremio-enhanced/streamingserver/server.js" \
         "https://dl.strem.io/server/v4.20.18/desktop/server.js"
     '
-    distrobox enter --name arch-box -- bash -c '
-      set -euo pipefail
-      sudo systemctl enable --now rustdesk
-    '
     distrobox enter --name arch-box -- distrobox-export --app stremio-enhanced
     distrobox enter --name arch-box -- distrobox-export --app rustdesk
+    mkdir -p "$HOME/.config/systemd/user"
+    cat > "$HOME/.config/systemd/user/rustdesk.service" << 'EOF'
+[Unit]
+Description=RustDesk remote desktop (arch-box)
+After=network.target
+
+[Service]
+ExecStart=distrobox enter --name arch-box -- rustdesk --service
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable --now rustdesk
     echo "arch-box done."
 
 # System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
