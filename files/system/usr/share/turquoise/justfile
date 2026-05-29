@@ -378,24 +378,25 @@ distroboxes:
     echo "arch-box done."
 
     echo ""
-    echo "=== fedora-box (RustDesk) ==="
-    distrobox rm --force --yes fedora-box 2>/dev/null || true
+    echo "=== ubuntu-box (RustDesk) ==="
+    distrobox rm --force --yes ubuntu-box 2>/dev/null || true
     rm -f "$HOME/.local/share/applications/"*rustdesk* 2>/dev/null || true
     rm -f "$HOME/.local/bin/"*rustdesk* 2>/dev/null || true
 
-    distrobox create --name fedora-box --image fedora:latest --yes
-    distrobox enter --name fedora-box -- bash -c '
+    distrobox create --name ubuntu-box --image ubuntu:latest --yes
+    distrobox enter --name ubuntu-box -- bash -c '
       set -euo pipefail
-      sudo dnf install -y wget curl
-      wget -O /tmp/rustdesk.rpm https://download.rustdesk.com/rustdesk-x86_64.rpm
-      sudo dnf install -y /tmp/rustdesk.rpm
+      sudo apt-get update -y
+      sudo apt-get install -y wget
+      wget -O /tmp/rustdesk.deb https://download.rustdesk.com/rustdesk-x86_64.deb
+      sudo apt-get install -y /tmp/rustdesk.deb
     '
-    distrobox enter --name fedora-box -- bash -c '
+    distrobox enter --name ubuntu-box -- bash -c '
       set -euo pipefail
       sudo systemctl enable --now rustdesk
     '
-    distrobox enter --name fedora-box -- distrobox-export --app rustdesk
-    echo "fedora-box done."
+    distrobox enter --name ubuntu-box -- distrobox-export --app rustdesk
+    echo "ubuntu-box done."
 
 # System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
 update:
