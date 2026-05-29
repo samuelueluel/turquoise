@@ -209,7 +209,6 @@ flatpaks:
         io.github.quodlibet.QuodLibet \
         org.qgis.qgis//stable \
         org.nicotine_plus.Nicotine \
-        com.stremio.Stremio \
         io.missioncenter.MissionCenter \
         io.github.dvlv.boxbuddyrs \
         com.github.tchx84.Flatseal \
@@ -217,7 +216,6 @@ flatpaks:
         io.github.kolunmi.Bazaar \
         org.fedoraproject.MediaWriter \
         com.github.PintaProject.Pinta \
-        com.rustdesk.RustDesk \
         org.freedesktop.Platform.ffmpeg-full//24.08
     flatpak override --user --filesystem=xdg-config/gtk-3.0:ro io.github.quodlibet.QuodLibet || true
     flatpak override --user --env=QT_QPA_PLATFORMTHEME=qt6ct --filesystem=xdg-config/qt6ct:ro --filesystem=xdg-data/color-schemes:ro org.kde.okular || true
@@ -345,6 +343,59 @@ wayvibes-soundpacks:
     cp {{SHARE}}/wayvibes/nk-cream-config.json "$DEST/nk-cream/config.json"
 
     echo "Done — soundpacks installed to $DEST"
+
+# Set up arch-box (Stremio) and fedora-box (RustDesk) distroboxes with app exports
+distroboxes:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    trap 'echo ""; echo "FAILED at line $LINENO: $BASH_COMMAND"; exit 1' ERR
+
+    echo "=== arch-box (Stremio) ==="
+    distrobox rm --force --yes arch-box 2>/dev/null || true
+    rm -f "$HOME/.local/share/applications/"*stremio* 2>/dev/null || true
+    rm -f "$HOME/.local/bin/"*stremio* 2>/dev/null || true
+    rm -rf "$HOME/.config/stremio-enhanced" 2>/dev/null || true
+
+    distrobox create --name arch-box --image archlinux:latest --yes
+    distrobox enter --name arch-box -- bash -c '
+      set -euo pipefail
+      sudo pacman -Syu --noconfirm
+      sudo pacman -S --noconfirm base-devel git
+      cd /tmp && rm -rf yay-bin
+      git clone https://aur.archlinux.org/yay-bin.git && cd yay-bin && makepkg -si --noconfirm
+    '
+    distrobox enter --name arch-box -- bash -c '
+      set -euo pipefail
+      yay -S --noconfirm stremio-enhanced-bin ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+    '
+    distrobox enter --name arch-box -- bash -c '
+      set -euo pipefail
+      mkdir -p "$HOME/.config/stremio-enhanced/streamingserver"
+      wget -O "$HOME/.config/stremio-enhanced/streamingserver/server.js" \
+        "https://dl.strem.io/server/v4.20.18/desktop/server.js"
+    '
+    distrobox enter --name arch-box -- distrobox-export --app stremio-enhanced
+    echo "arch-box done."
+
+    echo ""
+    echo "=== fedora-box (RustDesk) ==="
+    distrobox rm --force --yes fedora-box 2>/dev/null || true
+    rm -f "$HOME/.local/share/applications/"*rustdesk* 2>/dev/null || true
+    rm -f "$HOME/.local/bin/"*rustdesk* 2>/dev/null || true
+
+    distrobox create --name fedora-box --image fedora:latest --yes
+    distrobox enter --name fedora-box -- bash -c '
+      set -euo pipefail
+      sudo dnf install -y wget curl
+      wget -O /tmp/rustdesk.rpm https://download.rustdesk.com/rustdesk-x86_64.rpm
+      sudo dnf install -y /tmp/rustdesk.rpm
+    '
+    distrobox enter --name fedora-box -- bash -c '
+      set -euo pipefail
+      sudo systemctl enable --now rustdesk
+    '
+    distrobox enter --name fedora-box -- distrobox-export --app rustdesk
+    echo "fedora-box done."
 
 # System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
 update:
