@@ -344,16 +344,18 @@ wayvibes-soundpacks:
 
     echo "Done — soundpacks installed to $DEST"
 
-# Set up arch-box (Stremio) and fedora-box (RustDesk) distroboxes with app exports
+# Set up arch-box (Stremio + RustDesk) distrobox with app exports
 distroboxes:
     #!/usr/bin/env bash
     set -euo pipefail
     trap 'echo ""; echo "FAILED at line $LINENO: $BASH_COMMAND"; exit 1' ERR
 
-    echo "=== arch-box (Stremio) ==="
+    echo "=== arch-box (Stremio + RustDesk) ==="
     distrobox rm --force --yes arch-box 2>/dev/null || true
     rm -f "$HOME/.local/share/applications/"*stremio* 2>/dev/null || true
+    rm -f "$HOME/.local/share/applications/"*rustdesk* 2>/dev/null || true
     rm -f "$HOME/.local/bin/"*stremio* 2>/dev/null || true
+    rm -f "$HOME/.local/bin/"*rustdesk* 2>/dev/null || true
     rm -rf "$HOME/.config/stremio-enhanced" 2>/dev/null || true
 
     distrobox create --name arch-box --image archlinux:latest --yes
@@ -366,7 +368,7 @@ distroboxes:
     '
     distrobox enter --name arch-box -- bash -c '
       set -euo pipefail
-      yay -S --noconfirm stremio-enhanced-bin ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
+      yay -S --noconfirm stremio-enhanced-bin rustdesk-bin ffmpeg gst-plugins-good gst-plugins-bad gst-plugins-ugly gst-libav
     '
     distrobox enter --name arch-box -- bash -c '
       set -euo pipefail
@@ -374,29 +376,13 @@ distroboxes:
       wget -O "$HOME/.config/stremio-enhanced/streamingserver/server.js" \
         "https://dl.strem.io/server/v4.20.18/desktop/server.js"
     '
-    distrobox enter --name arch-box -- distrobox-export --app stremio-enhanced
-    echo "arch-box done."
-
-    echo ""
-    echo "=== ubuntu-box (RustDesk) ==="
-    distrobox rm --force --yes ubuntu-box 2>/dev/null || true
-    rm -f "$HOME/.local/share/applications/"*rustdesk* 2>/dev/null || true
-    rm -f "$HOME/.local/bin/"*rustdesk* 2>/dev/null || true
-
-    distrobox create --name ubuntu-box --image ubuntu:latest --yes
-    distrobox enter --name ubuntu-box -- bash -c '
-      set -euo pipefail
-      sudo apt-get update -y
-      sudo apt-get install -y wget
-      wget -O /tmp/rustdesk.deb https://download.rustdesk.com/rustdesk-x86_64.deb
-      sudo apt-get install -y /tmp/rustdesk.deb
-    '
-    distrobox enter --name ubuntu-box -- bash -c '
+    distrobox enter --name arch-box -- bash -c '
       set -euo pipefail
       sudo systemctl enable --now rustdesk
     '
-    distrobox enter --name ubuntu-box -- distrobox-export --app rustdesk
-    echo "ubuntu-box done."
+    distrobox enter --name arch-box -- distrobox-export --app stremio-enhanced
+    distrobox enter --name arch-box -- distrobox-export --app rustdesk
+    echo "arch-box done."
 
 # System maintenance: health check, image upgrade, flatpaks, brew, distroboxes, firmware (not in setup)
 update:
