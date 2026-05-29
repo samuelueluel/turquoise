@@ -530,10 +530,28 @@ modules:
     scripts:
       - install-zen-browser.sh
 
+  # ── amdgpu_top (AMD GPU monitor, COPR) ───────────────────────────────────
+  # GPU/VRAM/power TUI to verify LLM inference runs on the iGPU, not the CPU.
+  - type: dnf
+    repos:
+      copr:
+        - jfaracco/amdgpu_top
+    install:
+      install-weak-deps: false
+      packages:
+        - amdgpu_top
+
   # ── Install AnythingLLM (Official AppImage) ──────────────────────────────
   - type: script
     scripts:
       - install-anythingllm.sh
+
+  # ── Install Lemonade Server (AMD NPU/GPU LLM inference, fc44 RPM) ─────────
+  # Provides the `lemonade-server` CLI for the XDNA2 NPU path (autocomplete +
+  # RAG embeddings). Auto-tracks the latest GitHub release on each rebuild.
+  - type: script
+    scripts:
+      - install-lemonade.sh
 
   # ── Patch noctalia-shell QML ─────────────────────────────────────────────
   # Customizes Taskbar.qml: full-square focused indicator + wider icon spacing.
