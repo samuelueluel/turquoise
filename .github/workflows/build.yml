@@ -27,7 +27,7 @@ jobs:
       matrix:
         recipe:
           - turquoise-recipe.yml
-          - turquoise-halo.yml
+          - turquoise-halo-recipe.yml
     steps:
       - name: Build Custom Image
         uses: blue-build/github-action@main # testing --- changes v1 to main
