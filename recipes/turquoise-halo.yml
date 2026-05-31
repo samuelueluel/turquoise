@@ -32,20 +32,17 @@ modules:
       - amdgpu.gttsize=126976
       - ttm.pages_limit=32505856
 
-  # ── Webcam akmod — AMD ISP4 (doc 3.B) ─────────────────────────────────────
-  # Out-of-tree driver until kernel 7.2 mainlines amd_isp4_capture. Secure Boot is
-  # already disabled (required by the vanilla kernel), so the unsigned akmod loads
-  # directly. The akmod rebuilds against the vanilla kernel on first boot.
-  # REMOVE this block once kernel 7.2 lands (driver ships in-tree, blob in linux-firmware).
-  - type: dnf
-    repos:
-      copr:
-        - abn/amd-isp4-capture-kmod
-    install:
-      install-weak-deps: false
-      packages:
-        - akmod-amd-isp4-capture
-        - kmod-amd-isp4-capture
+  # ── Webcam kmod — AMD ISP4 (doc 3.B) ──────────────────────────────────────
+  # Out-of-tree driver until kernel 7.2 mainlines amd_isp4_capture. Built from the
+  # abn/amd-isp4-capture-kmod COPR akmod *at image-build time* by build-isp4-akmod.sh,
+  # because (a) the akmod's root %post can't run akmods in the build container and
+  # (b) akmods.service is skipped at boot on bootc/ostree — so it can't build on
+  # first boot. Secure Boot is disabled in BIOS (vanilla kernel), so the unsigned
+  # module loads directly.
+  # REMOVE this block + files/scripts/build-isp4-akmod.sh when kernel 7.2 lands (3.F).
+  - type: script
+    scripts:
+      - build-isp4-akmod.sh
 
   # ── sched-ext userspace schedulers (doc 7) ────────────────────────────────
   # scx_lavd / scx_rusty for smooth desktop under heavy Stata/LLM load on the
