@@ -70,9 +70,14 @@ if ! runuser -u akmods -- env HOME="$WORK/build" \
 fi
 
 # Install the freshly built binary kmod into the image.
+# Use rpm --nodeps, NOT dnf: the per-kernel kmod carries a hard
+# "Requires: akmod-amd-isp4-capture" (kmodtool adds it so stock systems can
+# rebuild on new kernels), and pulling that akmod in re-triggers its root %post,
+# which fails. On an atomic image we never want the akmod (akmods.service is
+# skipped at boot), so install just the self-contained kmod and skip the dep.
 KMOD_RPM="$(ls "$WORK"/out/kmod-amd-isp4-capture-*.rpm | head -1)"
-echo ">>> Installing ${KMOD_RPM}"
-dnf install -y "$KMOD_RPM"
+echo ">>> Installing ${KMOD_RPM} (rpm --nodeps, skipping the akmod meta-dep)"
+rpm -i --nodeps "$KMOD_RPM"
 
 # Clean up build-only tooling and the download-only repo file.
 dnf remove -y akmods kmodtool dnf5-plugins cpio gcc make elfutils-libelf-devel \
