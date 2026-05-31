@@ -351,6 +351,7 @@ modules:
         # - checkpolicy          # already in base-main; used by setup-selinux.sh
         # - policycoreutils      # already in base-main; used by setup-selinux.sh
         - libxcrypt-compat # homebrew dependency that must be on system
+        - libqalculate # runtime lib for noctalia-shell's calculator (build-noctalia links against it)
 
   # ── Homebrew Framework ─────────────────────────────────────────────────────
   - type: brew
@@ -491,6 +492,7 @@ modules:
         - libepoxy-devel
         - libwebp-devel
         - pam-devel
+        - libqalculate-devel
 
   # ── Build noctalia-shell v5 from source ───────────────────────────────────
   # Replaces the lionheartp/Hyprland COPR RPM; installs to /usr/bin + /usr/share/noctalia/
@@ -687,6 +689,7 @@ modules:
         - libepoxy-devel
         - libwebp-devel
         - pam-devel
+        - libqalculate-devel
 
   # ── Configure greetd + gtkgreet ───────────────────────────────────────────
   - type: script
