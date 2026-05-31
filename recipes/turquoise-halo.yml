@@ -1,0 +1,80 @@
+name: turquoise-halo
+description: Turquoise for the HP ZBook Ultra G1a (Ryzen AI Max+ 395 "Strix Halo")
+base-image: ghcr.io/ublue-os/base-main # This will change in the future
+image-version: latest
+
+# Same software/desktop stack as turquoise (via the shared include below) plus
+# Strix Halo hardware enablement. See the hardware notes at:
+#   ~/Dropbox/Sam_Personal_Vault/30_Personal/20_Personal_Interests/Custom Image/
+#   HP ZBook Ultra G1a 14'' Ryzen AI Max+ 395.md
+# Section references (doc 3.A, 3.B, etc.) below point at that note.
+
+modules:
+  # ── Everything turquoise has ──────────────────────────────────────────────
+  - from-file: turquoise-common.yml
+
+  # ── Halo-only static files (separate tree → /) ────────────────────────────
+  # Kept out of files/system so nothing here lands in the regular turquoise image.
+  - type: files
+    files:
+      - source: halo
+        destination: /
+
+  # ── Kernel arguments (doc 3.A + 5.A.2) ────────────────────────────────────
+  # amd_pstate=active: fixes 10–15W idle / warm palm rest (default mode is broken).
+  # amdgpu.gttsize (MB) + ttm.pages_limit (4K pages) expose ~124GB to the iGPU for
+  # local LLM inference. Applied on `bootc upgrade`; verify with `rpm-ostree kargs`.
+  # NOT added: amd_iommu=off (LLM-perf karg, DMA-isolation tradeoff — verify suspend
+  # with `amd-s2idle test` on hardware first); processor.max_cstate=1 (hurts battery).
+  - type: kargs
+    kargs:
+      - amd_pstate=active
+      - amdgpu.gttsize=126976
+      - ttm.pages_limit=32505856
+
+  # ── Webcam akmod — AMD ISP4 (doc 3.B) ─────────────────────────────────────
+  # Out-of-tree driver until kernel 7.2 mainlines amd_isp4_capture. Secure Boot is
+  # already disabled (required by the vanilla kernel), so the unsigned akmod loads
+  # directly. The akmod rebuilds against the vanilla kernel on first boot.
+  # REMOVE this block once kernel 7.2 lands (driver ships in-tree, blob in linux-firmware).
+  - type: dnf
+    repos:
+      copr:
+        - abn/amd-isp4-capture-kmod
+    install:
+      install-weak-deps: false
+      packages:
+        - akmod-amd-isp4-capture
+        - kmod-amd-isp4-capture
+
+  # ── sched-ext userspace schedulers (doc 7) ────────────────────────────────
+  # scx_lavd / scx_rusty for smooth desktop under heavy Stata/LLM load on the
+  # 16-core dual-CCD CPU. Driven by scx_loader (enabled below); default scheduler
+  # is set in files/halo/etc/scx_loader.toml. Manage live with `scxctl`.
+  - type: dnf
+    repos:
+      copr:
+        - bieszczaders/kernel-cachyos-addons
+    install:
+      install-weak-deps: false
+      packages:
+        - scx-scheds
+
+  # ── Diagnostics + firmware (doc 2.C.2 / 3.D / 5.D) ─────────────────────────
+  # amd-debug-tools: provides `amd-s2idle` to validate suspend after karg changes.
+  # linux-firmware: ensure current (must NOT be the ROCm-breaking 20251125 build).
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - amd-debug-tools
+        - linux-firmware
+
+  # ── Enable halo services ──────────────────────────────────────────────────
+  # ac-wakeup-disable: stops the AC adapter triggering immediate resume (doc 3.E).
+  # scx_loader: D-Bus daemon that loads the scheduler from scx_loader.toml at boot.
+  - type: systemd
+    system:
+      enabled:
+        - ac-wakeup-disable.service
+        - scx_loader.service
