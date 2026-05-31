@@ -57,14 +57,15 @@ modules:
       packages:
         - scx-scheds
 
-  # ── Diagnostics + firmware (doc 2.C.2 / 3.D / 5.D) ─────────────────────────
-  # amd-debug-tools: provides `amd-s2idle` to validate suspend after karg changes.
+  # ── Firmware (doc 3.D / 5.D) ──────────────────────────────────────────────
   # linux-firmware: ensure current (must NOT be the ROCm-breaking 20251125 build).
+  # amd-debug-tools (the `amd-s2idle` suspend test, doc 2.C.2) is NOT packaged for
+  # Fedora — it's superm1's upstream tool meant to run from a venv. Install on-host
+  # when debugging suspend: `pipx install amd-debug-tools` (pipx is already in the image).
   - type: dnf
     install:
       install-weak-deps: false
       packages:
-        - amd-debug-tools
         - linux-firmware
 
   # ── Enable halo services ──────────────────────────────────────────────────

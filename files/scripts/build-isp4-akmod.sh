@@ -84,6 +84,6 @@ dnf remove -y akmods kmodtool dnf5-plugins cpio gcc make elfutils-libelf-devel \
   "kernel-devel-${KVER}" || true
 rm -f /etc/yum.repos.d/_copr_amd-isp4-capture.repo
 
-echo ">>> Done: $(rpm -q kmod-amd-isp4-capture)"
+echo ">>> Done: $(rpm -qa 'kmod-amd-isp4-capture*')"
 find "/usr/lib/modules/${KVER}/extra" -iname '*isp4*' -print 2>/dev/null \
   || echo ">>> NOTE: no module under extra/; verify kmod payload path on first boot"
