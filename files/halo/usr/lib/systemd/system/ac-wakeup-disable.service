@@ -1,0 +1,10 @@
+[Unit]
+Description=Disable AC adapter wakeup trigger
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c "echo disabled > /sys/devices/platform/ACPI0003:00/power_supply/AC/power/wakeup"
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,17 @@
+# scx_loader config — auto-starts a sched-ext scheduler at boot via scx_loader.service.
+# scx_lavd (latency-aware) keeps niri/VS Code/cursor smooth under heavy Stata/LLM
+# load on the 16-core dual-CCD CPU (<1% penalty to the background job). See hardware
+# note section 7. Hot-swap live with: sudo scxctl switch -s rusty
+#
+# Only default_sched + default_mode are required; [scheds.*] sections are optional
+# and fall back to scx_loader's built-in flags. The scx_lavd section below pins the
+# laptop-appropriate flags per mode (--autopower for the default Auto mode).
+default_sched = "scx_lavd"
+default_mode = "Auto"
+
+[scheds.scx_lavd]
+auto_mode = ["--autopower"]
+gaming_mode = ["--performance"]
+lowlatency_mode = ["--performance"]
+powersave_mode = ["--powersave"]
+server_mode = ["--autopilot"]

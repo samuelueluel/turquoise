@@ -1,0 +1,740 @@
+modules:
+  # ── Bake system-level config files ────────────────────────────────────────
+  # Placed first so repo files (e.g. dropbox.repo) are in place before dnf runs.
+  # - /etc/yum.repos.d/dropbox.repo: avoids fetching from linux.dropbox.com in CI
+  # - Portal routing: FileChooser→termfilechooser, ScreenCast/Screenshot→gnome
+  # - Default cursor theme pointer
+  - type: files
+    files:
+      - source: system
+        destination: /
+
+  # ── Remove conflicting base-image packages ────────────────────────────────
+  - type: dnf
+    remove:
+      packages:
+        - firefox
+        - firefox-langpacks
+
+  # ── Swap glibc-all-langpacks → glibc-langpack-en ─────────────────────────
+  # In Fedora 43 (44?), glibc requires glibc-langpack at all times. The dnf module
+  # runs removes before installs, so install+remove in one block fails.
+  # Solution: two separate blocks — install the replacement first, then remove.
+  # glibc-all-langpacks: 226MB for 100+ locales; replace with English-only.
+  - type: dnf
+    install:
+      packages:
+        - glibc-langpack-en
+
+  - type: dnf
+    remove:
+      packages:
+        - glibc-all-langpacks
+
+  # ── Remove base-image bloat ────────────────────────────────────────────────
+  # python3-botocore: AWS SDK (~109MB), no reverse deps, no use on this system
+  # geolite2-*: MaxMind GeoIP databases pulled in by base, not required by anything
+  # ibus + sub-packages: CJK/multilingual input framework (~200MB+); display of
+  #   Japanese/CJK characters is handled by Noto fonts, not ibus
+  # cldr-emoji-annotation: Unicode CLDR data only needed by ibus-typing-booster
+  # anthy-unicode, libpinyin*, libhangul: CJK input data, only used by ibus
+  # orca + speech-dispatcher*: screen reader + TTS stack, nothing depends on them
+  # braille-printer-app: Braille printer support, not needed
+  # hplip*: HP-specific printer drivers, no HP printer on this system
+  # gutenprint*: Epson/Canon printer drivers; Brother network printer uses IPP
+  # pam-u2f, pam_yubico, pamu2fcfg, yubikey-manager: YubiKey/U2F auth stack; no YubiKey on this system
+  # openrgb-udev-rules: RGB lighting hardware support; no RGB peripherals
+  # oversteer-udev: racing wheel support; no racing wheel
+  - type: dnf
+    remove:
+      packages:
+        - python3-botocore
+        - geolite2-city
+        - geolite2-country
+        - ibus
+        - ibus-anthy
+        - ibus-anthy-python
+        - ibus-chewing
+        - ibus-gtk3
+        - ibus-gtk4
+        - ibus-hangul
+        - ibus-libpinyin
+        - ibus-m17n
+        - ibus-panel
+        - ibus-setup
+        - ibus-typing-booster
+        - cldr-emoji-annotation
+        - cldr-emoji-annotation-dtd
+        - anthy-unicode
+        - libpinyin
+        - libpinyin-data
+        - libhangul
+        - orca
+        - speech-dispatcher
+        - speech-dispatcher-espeak-ng
+        - speech-dispatcher-libs
+        - speech-dispatcher-utils
+        - python3-speechd
+        - braille-printer-app
+        - hplip
+        - hplip-common
+        - hplip-libs
+        - gutenprint
+        - gutenprint-cups
+        - gutenprint-libs
+        - pam-u2f
+        - pam_yubico
+        - pamu2fcfg
+        - yubikey-manager
+        - openrgb-udev-rules
+        - oversteer-udev
+
+  # ── RPM Fusion nonfree + tainted ─────────────────────────────────────────
+  # base-main pre-configures RPM Fusion free; we add nonfree for codecs.
+  # rpmfusion-free-release-tainted is NOT installed as a package because RPM Fusion
+  # ships a rawhide repo file that causes dnf to resolve the F+1 version (uninstallable
+  # on current release). Instead, the tainted .repo file is baked in via the files
+  # module above. The GPG key it references is installed by rpmfusion-free-release
+  # (pulled in by the nonfree: rpmfusion block below) before libdvdcss is installed.
+  - type: dnf
+    repos:
+      nonfree: rpmfusion
+
+  # ── Stable kernel (kernel-vanilla/stable) ────────────────────────────────
+  # Replaces the UBlue base kernel with latest upstream stable release.
+  # Uses replace (distro-sync) so the COPR version wins even if base image
+  # already has the same or older version installed.
+  # Secure Boot validation must be disabled in BIOS (verified disabled).
+  - type: dnf
+    repos:
+      copr:
+        - "@kernel-vanilla/stable"
+    replace:
+      - from-repo: copr:copr.fedorainfracloud.org:group_kernel-vanilla:stable
+        packages:
+          - kernel
+          - kernel-core
+          - kernel-modules
+          - kernel-modules-extra
+
+  # ── COPR + external repos, plus their packages ────────────────────────────
+  - type: dnf
+    repos:
+      copr:
+        - yalter/niri # niri compositor
+        - ublue-os/packages # uupd unified updater
+        # terra.repo is baked in via the files module (avoids CI network block)
+    install:
+      install-weak-deps: false
+      packages:
+        - niri # scrolling Wayland compositor
+        - dropbox # Dropbox cloud storage client
+        - uupd # unified updater for uBlue images
+        # noctalia-shell: built from source via build-noctalia.sh
+        - pipx # install Python CLI tools in isolated environments
+
+  # ── Wayland compositor stack ──────────────────────────────────────────────
+  # swayosd: COPR has no Fedora 44 builds; built from source via build-swayosd.sh
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - wdisplays # GUI for managing Wayland displays
+        - xdg-desktop-portal-gtk # think already in base-main
+        - xdg-desktop-portal-gnome # screencasting — Niri uses Smithay, not wlroots
+        - xwayland-satellite # runs XWayland as a rootless Wayland client for X11 app support
+        # swayidle/swaylock removed: noctalia-shell handles idle (IdleService via
+        # ext-idle-notify-v1), session lock, and night light natively.
+        - wlsunset # blue light filter / night light — needed by noctalia
+        - kanshi # autorandr-style display profile switcher for Wayland
+        - grim # screenshot capture for Wayland
+        - slurp # interactive region/window selection (used with grim)
+        - wl-clipboard # think already in base-main; wl-copy/wl-paste clipboard tools
+        - xdg-user-dirs # creates/manages XDG dirs (Downloads, Documents, etc.)
+        - xdg-utils # think already in base-main; xdg-open and desktop integration helpers
+        - gtk4-layer-shell # GTK4 layer-shell for Wayland panels/overlays — noctalia dep
+        # network-manager-applet removed: noctalia-shell handles network/VPN in its control center
+        # hyprpicker: not in Fedora repos — add via script if needed
+        - libappindicator-gtk3 # legacy AppIndicator/system-tray support for apps — noctalia dep
+        # nirius: built from source via build-nirius.sh (Terra is behind upstream)
+        - jq # JSON parsing for Niri IPC scripts — think already in base-main
+        - matugen # material-you color generation for noctalia
+        - gpu-screen-recorder # noctalia screen recording plugin
+        - sdbus-cpp # D-Bus C++ library — noctalia runtime dep (was pulled in by COPR RPM)
+        - jemalloc # memory allocator — noctalia links against this when present at build time
+        # dex: not in Fedora repos — XDG Autostart launcher, add via script if needed
+
+  # ── Display manager ───────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - greetd # minimal display manager daemon (replaces GDM/SDDM)
+        - gtkgreet # GTK login greeter for greetd
+        - cage # minimal single-app Wayland compositor; runs gtkgreet in isolation
+
+  # ── Terminals + shell ─────────────────────────────────────────────────────
+  # Note: most CLI stuff in Brewfile
+  - type: dnf
+    repos:
+      copr:
+        - scottames/ghostty
+    install:
+      install-weak-deps: false
+      packages:
+        - ghostty # primary GPU-accelerated terminal emulator
+
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - kitty # GPU-accelerated terminal; used specifically for yazi file previews
+        - neovim # required by vscode-neovim extension (spawns real nvim instance for VS Code Vim bindings)
+        - code # Visual Studio Code
+        - tmux # terminal multiplexer; split panes + persistent sessions (used with neovim REPL workflow)
+        - zsh # Z shell (primary interactive shell)
+        - zsh-autosuggestions # fish-like command suggestions based on history
+        - zsh-syntax-highlighting # real-time command syntax highlighting in zsh
+        - bash-completion # think already in base-main
+        - nano # think already in base-main
+        - less # think already in base-main
+
+  # ── File management ───────────────────────────────────────────────────────
+  # yazi installed via script (not in Fedora repos)
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - nemo # Cinnamon file manager (GUI backup to yazi)
+        - udiskie # auto-mounts removable drives via udisks2
+        - trash-cli # XDG-compliant trash from the command line
+        - unrar # RAR archive extractor
+        - unzip # think already in base-main; ZIP archive extractor
+        - p7zip # 7-Zip archive tool (7z format + many others)
+        - gvfs-mtp # GVFS backend for MTP (Android phones, media players)
+        - gvfs-gphoto2 # GVFS backend for PTP/digital cameras
+        - gvfs-smb # GVFS backend for SMB/Windows network shares
+        - gvfs-nfs # GVFS backend for NFS mounts
+        - gvfs-fuse # exposes GVFS mounts as FUSE filesystem paths
+        - gvfs-archive # GVFS backend for browsing archives as directories
+        - ntfs-3g # think already in base-main
+        - exfatprogs # think already in base-main
+        - dosfstools # think already in base-main
+        - nfs-utils # think already in base-main
+        - xfsprogs # XFS filesystem tools — think already in base-main
+        - xfsprogs-xfs_scrub # online XFS metadata scrubber + systemd units
+
+  # ── Audio ─────────────────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - pipewire-alsa # think already in base-main
+        - pipewire-jack-audio-connection-kit # JACK compat (Fedora name for pipewire-jack) — think already in base-main
+        - pipewire-pulse # think already in base-main
+        - wireplumber # think already in base-main
+        - rtkit # think already in base-main
+        - alsa-firmware # think already in base-main
+        - alsa-utils # think already in base-main
+        - alsa-sof-firmware # Sound Open Firmware (Fedora name for sof-firmware) — think already in base-main
+        - pipewire-gstreamer # think already in base-main
+        - lsp-plugins-lv2 # LV2 audio plugins for host JACK apps
+        # - wiremix # TUI mixer for PipeWire
+
+  # ── Hardware + power ──────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - brightnessctl # controls screen/keyboard backlight brightness
+        - bluez # think already in base-main
+        # blueman + bluez-tools removed: noctalia-shell bluetooth panel covers pairing/connecting;
+        # bluetoothctl (from bluez) covers CLI needs
+        - upower # think already in base-main; battery/power state abstraction
+        - power-profiles-daemon # switches CPU power profiles (balanced/performance/power-saver)
+        - fwupd # think already in base-main; firmware update framework
+        - fprintd # fingerprint daemon
+        - fprintd-pam # provides pam_fprintd.so; satisfies PAM fingerprint stack
+        # keyd: not in Fedora repos; built from source via build-keyd.sh
+        - playerctl # think already in base-main
+        - ModemManager # think already in base-main
+        - mesa-vulkan-drivers # includes AMD Radeon Vulkan (ThinkPad P14s) — think already in base-main
+        # - mesa-va-drivers       # already in base-main (ublue upgrades it)
+        # - libva-utils           # already in base-main
+        - mesa-demos # glxinfo, eglinfo etc.
+        - thermald # thermal management — think already in base-main
+
+  # ── Networking infrastructure ──────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - NetworkManager-openvpn # OpenVPN plugin for NetworkManager
+        - NetworkManager-openconnect # Cisco AnyConnect / OpenConnect VPN plugin for NetworkManager
+        # -gnome VPN plugins removed: GTK dialogs only needed by nm-applet (removed)
+        - avahi # think already in base-main
+        - nss-mdns # think already in base-main
+        - dnsmasq # used by libvirt for VM networking — think already in base-main
+        - openssh # think already in base-main
+        - wget # think already in base-main
+        - wireless-regdb # think already in base-main
+        - firewall-config # GTK GUI for managing firewalld rules
+        - firewall-applet # system tray applet showing firewall status
+        - tailscale # zero-config mesh VPN
+
+  # ── Printing ──────────────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - cups # think already in base-main
+        - cups-browsed # think already in base-main
+
+  # ── Media ─────────────────────────────────────────────────────────────────
+  # mpv stays in base (needed by yazi for video previews)
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - mpv # think already in base-main
+        - mpd # music player daemon (PipeWire-native via Fedora build)
+        - mpc # minimalist CLI client for mpd scripting
+        - beets # music library manager and tagger
+        - beets-plugins # extra beets plugins
+        - beets-doc # beets documentation
+        # yt-dlp → homebrew: yt-dlp
+        - ffmpeg # think already in base-main
+        - gstreamer1-plugin-libav # think already in base-main
+        - gstreamer1-vaapi # VA-API hardware video decode/encode plugin for GStreamer
+        - gstreamer1-plugins-good # think already in base-main
+        - gstreamer1-plugins-bad-free # think already in base-main
+        - gstreamer1-plugins-ugly # GStreamer plugins with patent/licensing issues (MP3, etc.)
+        - libdvdcss # from RPM Fusion nonfree-tainted
+        - libopenraw # RAW camera image decoding library (used by image viewers/thumbnailers)
+        - libgsf # think already in base-main
+        - poppler-glib # think already in base-main
+
+  # ── System utilities ───────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - git # think already in base-main
+        - rsync # think already in base-main
+        - fd-find # fallback for yazi search; homebrew fd takes precedence if installed
+        - fzf # fallback for yazi search; homebrew fzf takes precedence if installed
+        - chezmoi # dotfile manager — must be in image to bootstrap dotfiles before brew
+        - just # think already in base-main
+        - smartmontools # think already in base-main
+        - usbutils # think already in base-main
+        - inxi # full system info report (CPU, GPU, RAM, kernel, etc.)
+        - dmidecode # think already in base-main
+        - hdparm # get/set ATA disk parameters and benchmark read speed
+        - sg3_utils # SCSI/SAS/NVMe command-line utilities
+        - lsscsi # lists SCSI/SATA/NVMe devices
+        - sysfsutils # query and configure sysfs kernel attributes
+        - whois # think already in base-main
+        - ethtool # think already in base-main
+        - bind-utils # think already in base-main
+        - iputils # think already in base-main
+        - hostname # think already in base-main
+        - inotify-tools # inotifywait/inotifywatch for filesystem event monitoring in scripts
+        - plocate # fast file search via an indexed database (replaces mlocate)
+        - man-db # think already in base-main
+        - hwinfo # detailed hardware probe (more verbose than lshw/inxi)
+        - python3 # think already in base-main
+        - python3-evdev # think already in base-main
+        - os-prober # think already in base-main
+        # - cosign               # already in base-main (pinned version from GitHub releases — do not install via dnf)
+        # - curl                 # already in base-main
+        # - gcc                  # already in base-main; pulled in by build scripts (nwg-look, niri-window-buttons)
+        # - checkpolicy          # already in base-main; used by setup-selinux.sh
+        # - policycoreutils      # already in base-main; used by setup-selinux.sh
+        - libxcrypt-compat # homebrew dependency that must be on system
+        - libqalculate # runtime lib for noctalia-shell's calculator (build-noctalia links against it)
+
+  # ── Homebrew Framework ─────────────────────────────────────────────────────
+  - type: brew
+    brew-analytics: false
+    auto-upgrade: false # probably have separate update timer
+
+  # ── themes + appearance ────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - papirus-icon-theme # flat/material icon theme
+        - papirus-icon-theme-dark # Needed for dark GTK themes
+        - adw-gtk3-theme # Adwaita-style GTK3 theme (matches libadwaita apps)
+        - xapp-symbolic-icons # Fixes broken symbolic icons in Nemo UI
+        - qt6ct # Qt6 appearance/theme configuration tool (for non-KDE sessions)
+        - qt5ct # Qt5 appearance/theme configuration tool (for non-KDE sessions)
+        - qt6-qtwayland # Qt6 Wayland platform plugin (required for Qt6 apps under Wayland)
+        - kvantum # SVG-based Qt theme engine with Wayland support
+
+  # ── Fonts ─────────────────────────────────────────────────────────────────
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - freetype-freeworld # subpixel hinting + LCD filtering (better than stock Fedora FreeType)
+        - ibm-plex-sans-fonts # full family: Light, Regular, SemiBold, Bold, etc.
+        - ibm-plex-mono-fonts # IBM Plex monospace (used in Zed editor)
+        - google-noto-emoji-fonts # think already in base-main
+        - google-noto-sans-fonts # Noto sans-serif for broad Unicode coverage
+        - google-noto-serif-fonts # Noto serif for broad Unicode coverage
+        - google-noto-sans-cjk-fonts # think already in base-main
+        - fontawesome-fonts-all # Font Awesome icon font (web/UI icons as glyphs)
+        - liberation-fonts # metric-compatible replacements for Arial, Times New Roman, Courier
+
+  - type: fonts
+    fonts:
+      nerd-fonts:
+        - JetBrainsMono # full family direct from Nerd Fonts releases
+
+  # ── Virtualization ────────────────────────────────────────────────────────
+  - type: dnf
+    group-install:
+      packages:
+        - virtualization
+    install:
+      install-weak-deps: false
+      packages:
+        - virt-manager # GUI for managing KVM/QEMU virtual machines
+
+  # ── Android (Waydroid) ────────────────────────────────────────────────────
+  # Binder is built into the vanilla kernel (CONFIG_ANDROID_BINDER_IPC=y).
+  # waydroid-container.service manages the Android container; run
+  # `sudo waydroid init` on first boot to download the Android system image.
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - waydroid # runs Android apps in a container via the binder kernel module
+        - lzip # needed by waydroid-script (ARM translation + GAPPS installer)
+
+  # ── Flatpaks ──────────────────────────────────────────────────────────────
+  - type: default-flatpaks # see sjust flatpaks
+    configurations:
+      - scope: system
+        notify: true
+        repo:
+          title: Flathub
+          url: https://dl.flathub.org/repo/flathub.flatpakrepo
+        remove:
+          - org.mozilla.firefox
+          - org.mozilla.Thunderbird
+          - org.kde.gwenview
+          - org.kde.haruna
+          - org.kde.kcalc
+          - org.kde.kclock
+          - org.kde.kontact
+          - org.kde.kweather
+          - org.kde.skanpage
+          - io.github.flattool.Warehouse
+          - org.fedoraproject.MediaWriter
+          - org.deskflow.deskflow
+          - com.rafaelmardojai.Blanket
+          - com.mattjakeman.ExtensionManager
+          - io.github.DenysMb.Kontainer
+
+  # ── Install build-time toolchain ─────────────────────────────────────────
+  # All build scripts assume these are pre-installed; cleaned up afterwards.
+  #   cargo, rust, rust-std-static, binutils, cpp  ← Rust builds (nirius, cclip, rmpcd, keyd, termfilechooser)
+  #   gtk3-devel, glib2-devel                      ← nwg-look
+  #   meson, ninja-build, gcc, gcc-c++             ← termfilechooser, cclip, keyd, noctalia
+  #   wayland-devel, sqlite-devel, xxhash-devel    ← cclip
+  #   inih-devel, systemd-devel, scdoc             ← termfilechooser
+  #   golang + golang-bin/src/go-filesystem, make  ← nwg-look, bluetuith
+  #   cabextract                                   ← install-msfonts
+  #   policycoreutils-python-utils                 ← setup-selinux (semanage fallback)
+  #   sdbus-cpp-devel, freetype-devel, fontconfig-devel, cairo-devel, pango-devel,
+  #   librsvg2-devel, libxkbcommon-devel, polkit-devel, pipewire-devel, libcurl-devel,
+  #   jemalloc-devel, mesa-libEGL-devel, mesa-libGLES-devel, libepoxy-devel,
+  #   libwebp-devel, pam-devel                     ← noctalia-shell
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - cargo
+        - rust
+        - gtk3-devel
+        - glib2-devel
+        - meson
+        - ninja-build
+        - gcc
+        - gcc-c++
+        - wayland-devel
+        - sqlite-devel
+        - xxhash-devel
+        - inih-devel
+        - systemd-devel
+        - scdoc
+        - golang
+        - make
+        - cabextract
+        - policycoreutils-python-utils
+        - lz4-devel
+        - wayland-protocols-devel
+        - sdbus-cpp-devel
+        - freetype-devel
+        - fontconfig-devel
+        - cairo-devel
+        - pango-devel
+        - librsvg2-devel
+        - libxkbcommon-devel
+        - polkit-devel
+        - pipewire-devel
+        - libcurl-devel
+        - jemalloc-devel
+        - mesa-libEGL-devel
+        - mesa-libGLES-devel
+        - libepoxy-devel
+        - libwebp-devel
+        - pam-devel
+        - libqalculate-devel
+
+  # ── Build noctalia-shell v5 from source ───────────────────────────────────
+  # Replaces the lionheartp/Hyprland COPR RPM; installs to /usr/bin + /usr/share/noctalia/
+  - type: script
+    scripts:
+      - build-noctalia.sh
+
+  # ── Build nirius from source ──────────────────────────────────────────────
+  # Terra is behind upstream; build directly from the tagged release tarball.
+  - type: script
+    scripts:
+      - build-nirius.sh
+
+  # ── Build wlctl from source ───────────────────────────────────────────────
+  # Successor to impala-nm; built from source using cargo
+  - type: script
+    scripts:
+      - build-wlctl.sh
+
+  # ── Install Zed editor (Official Binary) ─────────────────────────────────
+  # Terra RPM (1.0.0) has a wasmtime bug that crashes Zed when opening any file.
+  # Official binary from GitHub releases does not have this issue.
+  - type: script
+    scripts:
+      - install-zed.sh
+
+  # ── Install Zen Browser (Native Binary) ──────────────────────────────────
+  - type: script
+    scripts:
+      - install-zen-browser.sh
+
+  # ── amdgpu_top (AMD GPU monitor, COPR) ───────────────────────────────────
+  # GPU/VRAM/power TUI to verify LLM inference runs on the iGPU, not the CPU.
+  - type: dnf
+    repos:
+      copr:
+        - jfaracco/amdgpu_top
+    install:
+      install-weak-deps: false
+      packages:
+        - amdgpu_top
+
+  # ── Install AnythingLLM (Official AppImage) ──────────────────────────────
+  - type: script
+    scripts:
+      - install-anythingllm.sh
+
+  # ── Install Lemonade Server (AMD NPU/GPU LLM inference, fc44 RPM) ─────────
+  # Provides the `lemonade-server` CLI for the XDNA2 NPU path (autocomplete +
+  # RAG embeddings). Auto-tracks the latest GitHub release on each rebuild.
+  - type: script
+    scripts:
+      - install-lemonade.sh
+
+  # ── Patch noctalia-shell QML ─────────────────────────────────────────────
+  # Customizes Taskbar.qml: full-square focused indicator + wider icon spacing.
+  # Script fails the build if upstream changes invalidate the patch anchors.
+  # Disabled while testing noctalia-shell-v5 (QML paths/content differ).
+  # - type: script
+  # scripts:
+  # - patch-noctalia.sh
+
+  # ── Install Helium Browser (COPR RPM) ────────────────────────────────────
+  - type: dnf
+    repos:
+      copr:
+        - imput/helium
+    install:
+      install-weak-deps: false
+      packages:
+        - helium
+
+  # ── Build nwg-look from source ────────────────────────────────────────────
+  # dustee071/unstable-apps COPR does not publish Fedora 43 builds
+  - type: script
+    scripts:
+      - install-nwg-look.sh
+
+  # ── Install yazi binary ────────────────────────────────────────────────────
+  # Not in Fedora repos; download pre-built musl binary from GitHub releases
+  - type: script
+    scripts:
+      - install-yazi.sh
+
+  # ── Install rmpc binary ───────────────────────────────────────────────────
+  # Not in Fedora repos; download pre-built musl binary from GitHub releases
+  - type: script
+    scripts:
+      - install-rmpc.sh
+
+  # ── Build wayvibes from source ────────────────────────────────────────────
+  # Wayland-native mechanical keyboard sound simulator (C++, libevdev + miniaudio).
+  # Replaces Neptune (Go, last updated 2023). Not packaged for Fedora; no releases —
+  # built from latest git. Soundpacks (Mechvibes format) configured at user level.
+  - type: script
+    scripts:
+      - install-wayvibes.sh
+
+  # ── Build rmpcd from source ───────────────────────────────────────────────
+  # rmpcd is the rmpc companion daemon (MPRIS, Last.fm, lyrics, notifications)
+  # Not distributed as a pre-built binary; built from source via cargo
+  - type: script
+    scripts:
+      - build-rmpcd.sh
+
+  # ── Build cclip from source ────────────────────────────────────────────────
+  # Not in Fedora repos; built from source using cargo
+  - type: script
+    scripts:
+      - build-cclip.sh
+
+  # ── Build keyd from source ────────────────────────────────────────────────
+  # Not in Fedora repos; was in Terra which has recurring GPG issues
+  - type: script
+    scripts:
+      - build-keyd.sh
+
+  # ── Build xdg-desktop-portal-termfilechooser ──────────────────────────────
+  # Yazi file picker portal; not packaged for Fedora, built from source (Rust)
+  - type: script
+    scripts:
+      - build-termfilechooser.sh
+
+  # ── Install Oreo cursors ───────────────────────────────────────────────────
+  - type: script
+    scripts:
+      - install-oreo-cursors.sh
+
+  # ── Install Microsoft core fonts (Arial, Times New Roman, etc.) ──────────
+  # Not packaged for Fedora; downloaded from SourceForge via cabextract
+  - type: script
+    scripts:
+      - install-msfonts.sh
+
+  # ── Build bluetuith from source ──────────────────────────────────────────
+  # Not in Fedora repos or Homebrew; built with Go toolchain.
+  - type: script
+    scripts:
+      - build-bluetuith.sh
+
+  # ── Clone dotfiles snapshot ────────────────────────────────────────────────
+  - type: script
+    scripts:
+      - build-dotfiles.sh
+
+  # ── Remove build-time toolchain ──────────────────────────────────────────
+  # Remove everything installed by the pre-build block above, plus transitive
+  # deps that dnf pulled in but won't auto-remove:
+  #   rust-std-static, binutils, cpp  ← orphaned deps of cargo/rust
+  #   golang-bin, golang-src, go-filesystem  ← orphaned deps of golang
+  #   wayland-devel, sqlite-devel, xxhash-devel ← orphaned deps of cclip
+  - type: dnf
+    remove:
+      packages:
+        - cargo
+        - rust
+        - rust-std-static
+        - binutils
+        - cpp
+        - gtk3-devel
+        - glib2-devel
+        - meson
+        - ninja-build
+        - gcc
+        - gcc-c++
+        - wayland-devel
+        - sqlite-devel
+        - xxhash-devel
+        - inih-devel
+        - systemd-devel
+        - scdoc
+        - golang
+        - golang-bin
+        - golang-src
+        - go-filesystem
+        - make
+        - cabextract
+        - policycoreutils-python-utils
+        - lz4-devel
+        - wayland-protocols-devel
+        - sdbus-cpp-devel
+        - freetype-devel
+        - fontconfig-devel
+        - cairo-devel
+        - pango-devel
+        - librsvg2-devel
+        - libxkbcommon-devel
+        - polkit-devel
+        - pipewire-devel
+        - libcurl-devel
+        - jemalloc-devel
+        - mesa-libEGL-devel
+        - mesa-libGLES-devel
+        - libepoxy-devel
+        - libwebp-devel
+        - pam-devel
+        - libqalculate-devel
+
+  # ── Configure greetd + gtkgreet ───────────────────────────────────────────
+  - type: script
+    scripts:
+      - setup-greetd.sh
+
+  # ── Custom SELinux policy ─────────────────────────────────────────────────
+  # Allow xdm_t (greetd) to start/status systemd unit files.
+  # Needed if niri-session triggers systemctl --user under the xdm_t context.
+  - type: script
+    scripts:
+      - setup-selinux.sh
+      - hide-duplicate-desktops.sh
+
+  # ── Systemd services ──────────────────────────────────────────────────────
+  - type: systemd
+    system:
+      enabled:
+        - greetd.service
+        - bluetooth.service
+        - libvirtd.socket
+        - waydroid-container.service
+        - keyd.service
+        - power-profiles-daemon.service
+        - thermald.service
+        - avahi-daemon.service
+        - cups.service
+        - fstrim.timer
+        - xfs_scrub_all.timer
+        - uupd.timer
+        - tailscaled.service
+      disabled:
+        # gdm.service and sddm.service removed: not present in F44 base-main
+        - flatpak-system-update.timer
+        - brew-update.timer
+        - rpm-ostreed-automatic.timer
+    user:
+      enabled:
+        # dropbox.service: Dropbox RPM doesn't ship a systemd unit; use XDG autostart instead
+        - app-com.mitchellh.ghostty.service
+        - pipewire.service
+        - pipewire-pulse.service
+        - wireplumber.service
+        - mpd.service
+        - rmpcd.service
+        - pipx-update.timer
+      disabled:
+        - flatpak-user-update.timer
