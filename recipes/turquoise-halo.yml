@@ -1,5 +1,5 @@
 name: turquoise-halo
-description: Turquoise for the HP ZBook Ultra G1a (Ryzen AI Max+ 395 "Strix Halo")
+description: Turquoise for the HP ZBook Ultra G1a (Ryzen AI Max+ 395 Strix Halo)
 base-image: ghcr.io/ublue-os/base-main # This will change in the future
 image-version: latest
 
