@@ -379,18 +379,18 @@ distroboxes:
     distrobox enter --name arch-box -- distrobox-export --app stremio-enhanced
     distrobox enter --name arch-box -- distrobox-export --app rustdesk
     mkdir -p "$HOME/.config/systemd/user"
-    cat > "$HOME/.config/systemd/user/rustdesk.service" << 'EOF'
-[Unit]
-Description=RustDesk remote desktop (arch-box)
-After=network.target
-
-[Service]
-ExecStart=distrobox enter --name arch-box -- rustdesk --service
-Restart=on-failure
-
-[Install]
-WantedBy=default.target
-EOF
+    printf '%s\n' \
+      '[Unit]' \
+      'Description=RustDesk remote desktop (arch-box)' \
+      'After=network.target' \
+      '' \
+      '[Service]' \
+      'ExecStart=distrobox enter --name arch-box -- rustdesk --service' \
+      'Restart=on-failure' \
+      '' \
+      '[Install]' \
+      'WantedBy=default.target' \
+      > "$HOME/.config/systemd/user/rustdesk.service"
     systemctl --user daemon-reload
     systemctl --user enable --now rustdesk
     echo "arch-box done."
