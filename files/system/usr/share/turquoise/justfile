@@ -484,3 +484,152 @@ fix-compression:
     fi
 
     echo "Workaround applied. Please reboot your system to activate compression."
+
+# ── HP ZBook Ultra G1a (Strix Halo) — turquoise-halo only ────────────────────
+# Everything the turquoise-halo image can't/shouldn't bake: per-machine post-
+# install (compression, groups, amd-debug-tools), verification of baked features,
+# and the NPU kernel-arg toggle. Hardware notes:
+#   ~/Dropbox/.../Custom Image/HP ZBook Ultra G1a 14'' Ryzen AI Max+ 395.md
+#   ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md
+# Guarded by /usr/share/turquoise/image-id so they no-op on the P14s.
+
+# Strix Halo post-install: compression, groups, suspend tools, then verify (turquoise-halo only)
+halo:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(cat /usr/share/turquoise/image-id 2>/dev/null)" != "turquoise-halo" ]]; then
+        echo -e "\033[31mThis recipe is for the turquoise-halo image (HP ZBook Ultra G1a) only.\033[0m"
+        echo "  Current image-id: $(cat /usr/share/turquoise/image-id 2>/dev/null || echo unknown)"
+        exit 1
+    fi
+
+    echo -e "\033[34m=== 1/4 Groups + shell (sjust system) ===\033[0m"
+    sjust system
+
+    echo -e "\n\033[34m=== 2/4 Btrfs compression workaround (sjust fix-compression) ===\033[0m"
+    sjust fix-compression
+
+    echo -e "\n\033[34m=== 3/4 Suspend debug tools (amd-debug-tools → amd-s2idle) ===\033[0m"
+    # Not packaged for Fedora — superm1's upstream pipx tool. Provides `amd-s2idle`.
+    if command -v pipx >/dev/null && pipx list --short 2>/dev/null | grep -q '^amd-debug-tools'; then
+        echo "  amd-debug-tools already installed."
+    elif command -v pipx >/dev/null; then
+        echo "  Installing amd-debug-tools via pipx..."
+        pipx install amd-debug-tools || echo -e "  \033[33mInstall failed — run 'sjust pipx' / check network.\033[0m"
+    else
+        echo -e "  \033[33mpipx not found — run 'sjust pipx' first.\033[0m"
+    fi
+
+    echo -e "\n\033[34m=== 4/4 Verifying baked hardware enablement ===\033[0m"
+    sjust halo-verify || true
+
+    echo -e "\n\033[41;97m  MANUAL STEPS — NOT done by this script. You must do these yourself.  \033[0m"
+    echo -e "\033[33m  (firmware/install-time settings; no software, including sjust, can apply them)\033[0m"
+    echo ""
+    echo -e "\033[36m  ▶ BIOS/UEFI — enter setup at boot and set each of these by hand:\033[0m"
+    echo "      [ ] Secure Boot ............................ DISABLED  (required for the vanilla kernel)"
+    echo "      [ ] Pluton ................................. ENABLED   (s2idle suspend breaks if disabled)"
+    echo "      [ ] Integrated Graphics UMA Frame Buffer ... 512 MB    (not Auto/large)"
+    echo "      [ ] Fan offset ............................. +2        (steady low spin instead of cycling)"
+    echo "      [ ] ASPM ................................... default   (do not force off)"
+    echo -e "\033[36m  ▶ Install-time (only relevant on a fresh install — already chosen at Anaconda):\033[0m"
+    echo "      [ ] Btrfs + LUKS full-disk encryption"
+    echo -e "\033[33m  None of the above are verified by 'sjust halo-verify' — they are firmware-only.\033[0m"
+    echo ""
+    echo -e "\033[36m  ▶ Now: REBOOT\033[0m to activate the compression workaround + any karg changes."
+    echo -e "\n\033[32mhalo setup complete (automated steps).\033[0m Manual BIOS steps above are still up to you."
+
+# Verify turquoise-halo baked features: kargs, webcam, sched-ext, NPU, suspend (read-only)
+halo-verify:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    pass() { echo -e "  \033[32m✓\033[0m $*"; }
+    warn() { echo -e "  \033[33m!\033[0m $*"; }
+    fail() { echo -e "  \033[31m✗\033[0m $*"; }
+
+    if [[ "$(cat /usr/share/turquoise/image-id 2>/dev/null)" != "turquoise-halo" ]]; then
+        warn "image-id is not turquoise-halo — these checks assume the Halo image."
+    fi
+
+    echo -e "\033[34mKernel arguments (baked via kargs module)\033[0m"
+    KARGS="$(rpm-ostree kargs 2>/dev/null || true)"
+    for arg in amd_pstate=active amdgpu.gttsize=126976 ttm.pages_limit=32505856; do
+        grep -q -- "$arg" <<<"$KARGS" && pass "$arg" || fail "$arg MISSING"
+    done
+    if grep -q -- 'amd_iommu=off' <<<"$KARGS"; then
+        warn "amd_iommu=off present → XDNA2 NPU DISABLED (iGPU max-speed mode). 'sjust halo-npu on' to re-enable."
+    else
+        pass "amd_iommu=off absent → NPU enabled (autocomplete/embeddings available)"
+    fi
+    grep -q 'compress=zstd' <<<"$KARGS" && pass "compress=zstd in kargs" \
+        || warn "compress=zstd not in kargs — run 'sjust fix-compression' + reboot"
+
+    echo -e "\033[34mBtrfs compression (journal)\033[0m"
+    if journalctl -k -g 'use zstd compression' 2>/dev/null | grep -q zstd; then
+        pass "btrfs zstd compression active"
+    else
+        warn "no 'use zstd compression' in kernel log (reboot after fix-compression, or check perms)"
+    fi
+
+    echo -e "\033[34mWebcam — AMD ISP4 kmod (built at image time)\033[0m"
+    lsmod | grep -q amd_isp4_capture && pass "amd_isp4_capture loaded" || warn "amd_isp4_capture not loaded"
+    if command -v v4l2-ctl >/dev/null; then
+        v4l2-ctl --list-devices 2>/dev/null | grep -qi isp && pass "ISP4 video device present" \
+            || warn "no ISP4 device in v4l2-ctl --list-devices"
+    fi
+
+    echo -e "\033[34msched-ext schedulers\033[0m"
+    systemctl is-enabled scx_loader.service &>/dev/null && pass "scx_loader.service enabled" || fail "scx_loader.service not enabled"
+    SCX="$(scxctl get 2>/dev/null || sudo -n scxctl get 2>/dev/null || true)"
+    [[ -n "$SCX" ]] && pass "active scheduler: $SCX" || warn "scxctl get returned nothing (try: sudo scxctl get)"
+
+    echo -e "\033[34mAC-wakeup suspend fix\033[0m"
+    systemctl is-enabled ac-wakeup-disable.service &>/dev/null && pass "ac-wakeup-disable.service enabled" || fail "ac-wakeup-disable.service not enabled"
+
+    echo -e "\033[34miGPU memory (GTT)\033[0m"
+    if journalctl -k -g 'GTT memory' 2>/dev/null | grep -qi 'GTT memory'; then
+        pass "$(journalctl -k -g 'GTT memory' 2>/dev/null | tail -1 | sed 's/.*]: *//')"
+    else
+        warn "no 'GTT memory' line in kernel log (check perms or reboot)"
+    fi
+
+    echo -e "\033[34mNPU (XDNA2 / amdxdna)\033[0m"
+    if [[ -e /dev/accel/accel0 ]]; then
+        pass "/dev/accel/accel0 present"
+        command -v flm >/dev/null && echo "    (run 'flm validate' for firmware/memlock detail)"
+    else
+        warn "/dev/accel/accel0 absent — NPU off (amd_iommu=off set?) or kernel/firmware too old"
+    fi
+
+    echo -e "\033[34mSuspend test tooling\033[0m"
+    command -v amd-s2idle >/dev/null && pass "amd-s2idle available — run 'sudo amd-s2idle test' to validate s2idle" \
+        || warn "amd-s2idle not installed — run 'sjust halo' or 'pipx install amd-debug-tools'"
+
+# Toggle the XDNA2 NPU on/off via the amd_iommu kernel arg, then reboot (turquoise-halo only)
+halo-npu mode:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    case "{{mode}}" in
+      on)
+        if rpm-ostree kargs | grep -q -- 'amd_iommu=off'; then
+            sudo rpm-ostree kargs --delete='amd_iommu=off'
+            echo -e "\033[32mNPU enabled\033[0m (amd_iommu=off removed). Reboot to apply."
+        else
+            echo "NPU already enabled (amd_iommu=off not set)."
+        fi
+        ;;
+      off)
+        if rpm-ostree kargs | grep -q -- 'amd_iommu=off'; then
+            echo "NPU already disabled (amd_iommu=off set)."
+        else
+            sudo rpm-ostree kargs --append='amd_iommu=off'
+            echo -e "\033[32miGPU max-speed mode\033[0m (amd_iommu=off added, ~5–12% LLM boost; NPU disabled). Reboot to apply."
+        fi
+        ;;
+      *)
+        echo "usage: sjust halo-npu on|off"
+        echo "  on  = NPU enabled (autocomplete/embeddings) — default"
+        echo "  off = max iGPU LLM speed, NPU disabled"
+        exit 1
+        ;;
+    esac
