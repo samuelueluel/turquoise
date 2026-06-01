@@ -3,11 +3,15 @@
 # Terra is behind upstream; building directly from the tagged release tarball.
 set -euo pipefail
 
-VERSION=$(git ls-remote --tags https://git.sr.ht/~tsdh/nirius \
-  | grep 'refs/tags/nirius-[0-9]' \
-  | grep -v '\^{}' \
-  | sed 's|.*refs/tags/nirius-||' \
-  | sort -V | tail -1)
+for attempt in 1 2 3; do
+  VERSION=$(git ls-remote --tags https://git.sr.ht/~tsdh/nirius \
+    | grep 'refs/tags/nirius-[0-9]' \
+    | grep -v '\^{}' \
+    | sed 's|.*refs/tags/nirius-||' \
+    | sort -V | tail -1) && break
+  [[ $attempt -lt 3 ]] && sleep 5
+done
+[[ -n "$VERSION" ]] || { echo "Failed to resolve nirius version after 3 attempts"; exit 1; }
 TARBALL_URL="https://git.sr.ht/~tsdh/nirius/archive/nirius-${VERSION}.tar.gz"
 BUILD_DIR="$(mktemp -d)"
 trap "rm -rf '$BUILD_DIR'" EXIT
