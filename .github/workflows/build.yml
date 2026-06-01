@@ -26,7 +26,7 @@ jobs:
       fail-fast: false
       matrix:
         recipe:
-          - turquoise-recipe.yml
+          # - turquoise-recipe.yml
           - turquoise-halo-recipe.yml
     steps:
       - name: Build Custom Image

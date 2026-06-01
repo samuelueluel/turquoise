@@ -7,6 +7,9 @@ Personal Fedora Atomic image built with [BlueBuild](https://github.com/blue-buil
 > [!WARNING]
 > **Not intended for general use. Unstable.** This is a personal daily-driver image with opinionated configuration. Packages are subject to frequent change. Secure Boot is not supported. If you want a Universal Blue-type image with niri, use [Wayblue](https://github.com/wayblueorg/wayblue), [Zirconium](https://github.com/zirconium-dev/zirconium), or [TunaOS](https://github.com/tuna-os/tunaOS) instead. If you do use this, file an issue so that we can talk and make sure I don't randomly change things on your system. But just use something else. Minimal effort has been made to make this usable for others.
 
+> [!WARNING]
+> Turquoise-halo includes experimental, out-of-tree kernel modules and other configuration specific to Strix Halo chips. 
+
 ---
 
 ## Image
