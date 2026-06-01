@@ -31,9 +31,19 @@ echo ">>> Building amd-isp4-capture kmod for kernel ${KVER} (${ARCH})"
 #   akmods                → akmodsbuild + the non-root 'akmods' user
 #   kmodtool              → required by the kmod .spec
 #   dnf5-plugins          → provides `dnf download`
-#   cpio                  → extract the akmod payload (not in the minimal base)
+#   cpio                  → extract the akmod payload (ALREADY in base: dep of dracut)
 #   gcc/make/elfutils-libelf-devel + kernel-devel-<KVER> → compile the module
 BUILD_PKGS=(akmods kmodtool dnf5-plugins cpio gcc make elfutils-libelf-devel "kernel-devel-${KVER}")
+# Snapshot which of these are NOT already installed, so cleanup only removes what
+# this script actually adds. Several build deps (cpio, dnf5-plugins,
+# elfutils-libelf-devel) already ship in base-main; cpio in particular is a hard
+# dep of dracut → ostree → {rpm-ostree, bootc}. Blindly removing it in cleanup
+# cascades and strips the entire OS management stack out of the image — that is
+# exactly what produced the toolless 20260531.0 build (no bootc/rpm-ostree/ostree).
+ADDED_PKGS=()
+for p in "${BUILD_PKGS[@]}"; do
+  rpm -q "$p" >/dev/null 2>&1 || ADDED_PKGS+=("$p")
+done
 dnf install -y --setopt=install_weak_deps=False "${BUILD_PKGS[@]}"
 
 # COPR repo, download-only: we deliberately do NOT install the akmod package
@@ -79,9 +89,12 @@ KMOD_RPM="$(ls "$WORK"/out/kmod-amd-isp4-capture-*.rpm | head -1)"
 echo ">>> Installing ${KMOD_RPM} (rpm --nodeps, skipping the akmod meta-dep)"
 rpm -i --nodeps "$KMOD_RPM"
 
-# Clean up build-only tooling and the download-only repo file.
-dnf remove -y akmods kmodtool dnf5-plugins cpio gcc make elfutils-libelf-devel \
-  "kernel-devel-${KVER}" || true
+# Clean up ONLY the packages this script actually added (never base-image deps),
+# and disable cascade/orphan removal (clean_requirements_on_remove=False) so a
+# leaf build tool can't drag out the boot or ostree stack. See ADDED_PKGS above.
+if [ "${#ADDED_PKGS[@]}" -gt 0 ]; then
+  dnf remove -y --setopt=clean_requirements_on_remove=False "${ADDED_PKGS[@]}" || true
+fi
 rm -f /etc/yum.repos.d/_copr_amd-isp4-capture.repo
 
 echo ">>> Done: $(rpm -qa 'kmod-amd-isp4-capture*')"
