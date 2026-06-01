@@ -264,16 +264,17 @@ modules:
         - mesa-demos # glxinfo, eglinfo etc.
         - thermald # thermal management — think already in base-main
 
-  # ── Replace mesa-va-drivers with freeworld (H264/HEVC VA-API encoding) ──────
+  # ── Install mesa-va-drivers-freeworld (H264/HEVC VA-API encoding) ───────────
   # Fedora's official mesa disables H264/HEVC hardware encoding due to patent policy.
   # freeworld from RPM Fusion free is identical except that restriction is lifted,
   # enabling hardware codec support in gpu-screen-recorder and other VA-API consumers.
   # RPM Fusion free is pre-configured by base-main; no repo declaration needed.
+  # Note: replace requires the package to already be installed; since base-main does not
+  # include mesa-va-drivers, we install the freeworld variant directly instead.
   - type: dnf
-    replace:
-      - from-repo: rpmfusion-free-updates
-        packages:
-          - mesa-va-drivers-freeworld
+    install:
+      packages:
+        - mesa-va-drivers-freeworld
 
   # ── Networking infrastructure ──────────────────────────────────────────────
   - type: dnf
