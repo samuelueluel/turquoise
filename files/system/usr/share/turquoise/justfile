@@ -170,24 +170,36 @@ brew:
     rm -rf "$BBREW_TMP"
 
 # Declaratively install/upgrade Python-based CLI tools from ~/.Pipxfile
+# Pipxfile format: <pkg>[extras] [--python pythonX.Y]  # optional comment
 pipx:
     #!/usr/bin/env bash
     set -euo pipefail
     PIPX_FILE="{{HOME}}/.Pipxfile"
     [[ -f "$PIPX_FILE" ]] || { echo "~/.Pipxfile not found, skipping."; exit 0; }
     echo "Syncing pipx packages from $PIPX_FILE..."
-    while IFS= read -r pkg || [[ -n "$pkg" ]]; do
-        [[ "$pkg" =~ ^#.* ]] || [[ -z "$pkg" ]] && continue
-        # Strip comments and whitespace
-        pkg_name=$(echo "$pkg" | cut -d'#' -f1 | xargs)
-        # Extract base package name for 'pipx list' check (removes [extra])
+    # Env vars for building native (Rust/C) Python extensions on Fedora Atomic:
+    # brew gcc is versioned (gcc-15) with no plain 'cc' symlink; LIBRARY_PATH tells
+    # the linker where to find Fedora's glibc startup objects (/usr/lib64/).
+    export LIBRARY_PATH="/usr/lib64${LIBRARY_PATH:+:$LIBRARY_PATH}"
+    export CARGO_TARGET_X86_64_UNKNOWN_LINUX_GNU_LINKER=gcc-15
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ "$line" =~ ^#.* ]] || [[ -z "$line" ]] && continue
+        # Strip inline comments
+        entry=$(echo "$line" | cut -d'#' -f1 | xargs)
+        [[ -z "$entry" ]] && continue
+        # Split into package spec and extra pipx flags (e.g. --python python3.13)
+        pkg_name=$(echo "$entry" | awk '{print $1}')
+        extra_flags=$(echo "$entry" | cut -s -d' ' -f2-)
+        # Extract base package name for 'pipx list' check (strips [extras])
         base_name=$(echo "$pkg_name" | sed 's/\[.*//')
         if pipx list --short | grep -q "^${base_name} "; then
-             echo "  Upgrading $pkg_name..."
-             pipx upgrade "$pkg_name" &>/dev/null || true
+            echo "  Upgrading $base_name..."
+            pipx upgrade "$base_name" &>/dev/null || true
         else
-             echo "  Installing $pkg_name..."
-             pipx install "$pkg_name"
+            echo "  Installing $pkg_name..."
+            # shellcheck disable=SC2086
+            pipx install "$pkg_name" $extra_flags \
+                || echo -e "  \033[33m  ↳ install failed — skipping (check log or run manually)\033[0m"
         fi
     done < "$PIPX_FILE"
 
@@ -251,6 +263,7 @@ swap:
         exit 0
     fi
     sudo touch /etc/systemd/zram-generator.conf
+    sudo systemctl mask systemd-zram-setup@zram0.service 2>/dev/null || true
     sudo swapoff /dev/zram0 2>/dev/null || true
     # fallocate doesn't work on btrfs; use btrfs-native mkswapfile instead
     sudo rm -f /var/swapfile
