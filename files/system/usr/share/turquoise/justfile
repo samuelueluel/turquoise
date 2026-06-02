@@ -217,7 +217,6 @@ flatpaks:
         org.gnome.meld \
         org.texstudio.TeXstudio \
         com.github.wwmm.easyeffects \
-        com.jeffser.Alpaca \
         io.github.quodlibet.QuodLibet \
         org.qgis.qgis//stable \
         org.nicotine_plus.Nicotine \
@@ -941,3 +940,31 @@ halo-llm-webui:
     echo "  LAN access also needs (one-time, sudo):"
     echo "    sudo firewall-cmd --add-port=3000/tcp --permanent && sudo firewall-cmd --reload"
     echo "    loginctl enable-linger $USER      # start at boot without an active login"
+
+# Set up the Goose terminal agent via a Podman container.
+# This pulls the official Goose image so it can be run in a rootless sandbox,
+# as detailed in the Quick Start § 2.E.
+# Idempotent — re-running will update the image if needed.
+halo-llm-goose:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(cat /usr/share/turquoise/image-id 2>/dev/null)" != "turquoise-halo" ]]; then
+        echo -e "\033[31mThis recipe is for the turquoise-halo image only.\033[0m"; exit 1
+    fi
+    pass() { echo -e "  \033[32m✓\033[0m $*"; }
+    info() { echo -e "  \033[34m→\033[0m $*"; }
+
+    GOOSE_IMG="ghcr.io/block/goose:latest"
+
+    echo -e "\n\033[34m=== Podman Sandboxed Goose Image ===\033[0m"
+    info "Pulling $GOOSE_IMG..."
+    podman pull "$GOOSE_IMG"
+    pass "Image pulled and ready."
+
+    echo ""
+    echo -e "\033[32mGoose sandbox ready.\033[0m"
+    echo "  You can run it safely restricted to your workspace with:"
+    echo "    podman run -it --rm --network=host --userns=keep-id \\"
+    echo "      -v ~/workspace:/workspace:z -w /workspace \\"
+    echo "      ghcr.io/block/goose:latest goose session"
+
