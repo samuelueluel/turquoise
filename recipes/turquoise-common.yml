@@ -221,8 +221,8 @@ modules:
         - exfatprogs # think already in base-main
         - dosfstools # think already in base-main
         - nfs-utils # think already in base-main
-        - xfsprogs # XFS filesystem tools — think already in base-main
-        - xfsprogs-xfs_scrub # online XFS metadata scrubber + systemd units
+        # xfsprogs / xfsprogs-xfs_scrub removed: system is btrfs (no XFS anywhere),
+        # and the explicit enable of xfs_scrub_all.timer was the only thing arming it.
 
   # ── Audio ─────────────────────────────────────────────────────────────────
   - type: dnf
@@ -730,7 +730,6 @@ modules:
         - avahi-daemon.service
         - cups.service
         - fstrim.timer
-        - xfs_scrub_all.timer
         - uupd.timer
         - tailscaled.service
       disabled:
