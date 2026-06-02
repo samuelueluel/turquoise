@@ -252,9 +252,9 @@ swap:
     fi
     sudo touch /etc/systemd/zram-generator.conf
     sudo swapoff /dev/zram0 2>/dev/null || true
-    sudo fallocate -l 16G /var/swapfile
-    sudo chmod 600 /var/swapfile
-    sudo mkswap /var/swapfile
+    # fallocate doesn't work on btrfs; use btrfs-native mkswapfile instead
+    sudo rm -f /var/swapfile
+    sudo btrfs filesystem mkswapfile --size 16G /var/swapfile
     sudo swapon /var/swapfile
     grep -q '/var/swapfile' /etc/fstab || echo '/var/swapfile none swap defaults 0 0' | sudo tee -a /etc/fstab
     swapon --show
@@ -537,6 +537,7 @@ halo:
     echo -e "\033[33m  None of the above are verified by 'sjust halo-verify' — they are firmware-only.\033[0m"
     echo ""
     echo -e "\033[36m  ▶ Now: REBOOT\033[0m to activate the compression workaround + any karg changes."
+    echo -e "\033[36m  ▶ After reboot: run 'sjust halo-llm'\033[0m to set up the NPU distrobox + lemond service."
     echo -e "\n\033[32mhalo setup complete (automated steps).\033[0m Manual BIOS steps above are still up to you."
 
 # Verify turquoise-halo baked features: kargs, webcam, sched-ext, NPU, suspend (read-only)
@@ -553,7 +554,7 @@ halo-verify:
 
     echo -e "\033[34mKernel arguments (baked via kargs module)\033[0m"
     KARGS="$(rpm-ostree kargs 2>/dev/null || true)"
-    for arg in amd_pstate=active amdgpu.gttsize=126976 ttm.pages_limit=32505856; do
+    for arg in amd_pstate=active ttm.pages_limit=32505856; do
         grep -q -- "$arg" <<<"$KARGS" && pass "$arg" || fail "$arg MISSING"
     done
     if grep -q -- 'amd_iommu=off' <<<"$KARGS"; then
@@ -596,9 +597,22 @@ halo-verify:
     echo -e "\033[34mNPU (XDNA2 / amdxdna)\033[0m"
     if [[ -e /dev/accel/accel0 ]]; then
         pass "/dev/accel/accel0 present"
-        command -v flm >/dev/null && echo "    (run 'flm validate' for firmware/memlock detail)"
     else
         warn "/dev/accel/accel0 absent — NPU off (amd_iommu=off set?) or kernel/firmware too old"
+    fi
+    MLOCK_CONF=/etc/systemd/system/user@.service.d/memlock.conf
+    [[ -f "$MLOCK_CONF" ]] \
+        && pass "LimitMEMLOCK=infinity configured ($MLOCK_CONF)" \
+        || warn "memlock limit not raised — run 'sjust halo-llm'"
+    distrobox list 2>/dev/null | grep -q 'npu-lemonade' \
+        && pass "npu-lemonade distrobox exists" \
+        || warn "npu-lemonade distrobox missing — run 'sjust halo-llm'"
+    if systemctl --user is-active --quiet npu-lemond.service 2>/dev/null; then
+        pass "npu-lemond.service active (lemond :13305, NPU-enabled)"
+    elif systemctl --user is-active --quiet lemond.service 2>/dev/null; then
+        warn "lemond.service active (host RPM, no NPU) — run 'sjust halo-llm' to switch to NPU build"
+    else
+        warn "no lemond service running — run 'sjust halo-llm'"
     fi
 
     echo -e "\033[34mSuspend test tooling\033[0m"
@@ -633,3 +647,109 @@ halo-npu mode:
         exit 1
         ;;
     esac
+
+# Set up the local LLM stack: NPU distrobox (XRT + FLM + lemond), memlock fix, user service (turquoise-halo only)
+# Run after 'sjust halo' + reboot. Idempotent — safe to re-run.
+# See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md §2.C
+halo-llm:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(cat /usr/share/turquoise/image-id 2>/dev/null)" != "turquoise-halo" ]]; then
+        echo -e "\033[31mThis recipe is for the turquoise-halo image only.\033[0m"; exit 1
+    fi
+    pass() { echo -e "  \033[32m✓\033[0m $*"; }
+    info() { echo -e "  \033[34m→\033[0m $*"; }
+    fail() { echo -e "  \033[31m✗\033[0m $*"; }
+
+    # 1. Memlock — NPU inference requires locking model weights in RAM (default 8 MB is too low)
+    echo -e "\n\033[34m=== 1/4 Memlock limit (LimitMEMLOCK=infinity) ===\033[0m"
+    MLOCK_CONF=/etc/systemd/system/user@.service.d/memlock.conf
+    if [[ -f "$MLOCK_CONF" ]]; then
+        pass "Already configured."
+    else
+        sudo mkdir -p "$(dirname "$MLOCK_CONF")"
+        printf '[Service]\nLimitMEMLOCK=infinity\n' | sudo tee "$MLOCK_CONF" >/dev/null
+        sudo systemctl daemon-reload
+        pass "Configured. You must reboot (or log out/in) before NPU inference will work in this session."
+    fi
+
+    # 2. npu-lemonade distrobox — Ubuntu 24.04 with /dev/accel/accel0 for the XDNA2 NPU.
+    # FLM (FastFlowLM) only ships Ubuntu/Debian debs; this box provides the XRT + FLM runtime
+    # that the host Fedora image can't install directly.
+    echo -e "\n\033[34m=== 2/4 npu-lemonade distrobox (Ubuntu 24.04 + NPU device) ===\033[0m"
+    if distrobox list 2>/dev/null | grep -q 'npu-lemonade'; then
+        pass "Already exists."
+    else
+        info "Creating distrobox with /dev/accel/accel0 passthrough..."
+        distrobox create --name npu-lemonade \
+            --image docker.io/library/ubuntu:24.04 \
+            --additional-flags "--device /dev/accel/accel0" \
+            --yes
+        pass "Created."
+    fi
+
+    # 3. XRT + FastFlowLM + lemonade-server inside the distrobox
+    echo -e "\n\033[34m=== 3/4 XRT + FastFlowLM + lemonade-server inside distrobox ===\033[0m"
+    if distrobox enter npu-lemonade -- bash -c "command -v flm && command -v lemond" &>/dev/null; then
+        pass "Already installed."
+    else
+        info "Fetching latest FLM release..."
+        FLM_URL=$(curl -sf https://api.github.com/repos/FastFlowLM/FastFlowLM/releases/latest \
+            | python3 -c "import json,sys; a=[x for x in json.load(sys.stdin)['assets'] if 'ubuntu24.04' in x['name']]; print(a[0]['browser_download_url'])")
+        info "Installing inside distrobox (apt + deb download — a few minutes)..."
+        distrobox enter npu-lemonade -- bash -c "
+            set -euo pipefail
+            sudo apt-get update -qq
+            sudo apt-get install -y software-properties-common wget -qq
+            sudo add-apt-repository -y ppa:lemonade-team/stable 2>&1 | tail -1
+            sudo apt-get update -qq
+            sudo apt-get install -y libxrt-npu2 lemonade-server -qq
+            wget -q '$FLM_URL' -O /tmp/flm.deb
+            sudo apt-get install -y /tmp/flm.deb -qq
+        "
+        pass "Installed."
+    fi
+    info "Validating NPU stack..."
+    distrobox enter npu-lemonade -- flm validate
+
+    # 4. npu-lemond user service — runs the distrobox lemond on :13305.
+    # The Ubuntu lemond binary (with XRT + FLM support) replaces the host RPM lemond.
+    # Distrobox uses host networking, so :13305 is accessible from the host unchanged.
+    echo -e "\n\033[34m=== 4/4 npu-lemond user service ===\033[0m"
+    # Disable host lemond to avoid port 13305 conflict
+    systemctl --user stop  lemond.service 2>/dev/null || true
+    systemctl --user disable lemond.service 2>/dev/null || true
+
+    mkdir -p ~/.config/systemd/user/
+    cat > ~/.config/systemd/user/npu-lemond.service << 'EOF'
+[Unit]
+Description=Lemonade Server (NPU, via npu-lemonade distrobox)
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=distrobox enter npu-lemonade -- lemond
+Restart=on-failure
+RestartSec=5s
+
+[Install]
+WantedBy=default.target
+EOF
+    systemctl --user daemon-reload
+    systemctl --user enable --now npu-lemond.service
+    sleep 3
+    if systemctl --user is-active --quiet npu-lemond.service; then
+        pass "npu-lemond.service running on :13305"
+    else
+        fail "Service failed to start — check: journalctl --user -u npu-lemond.service -n 30"
+    fi
+
+    echo ""
+    echo -e "\033[32mLocal LLM stack ready.\033[0m"
+    echo "  NPU models (autocomplete + embeddings) — pull with lemonade:"
+    echo "    lemonade pull Qwen2.5-Coder-1.5B-Instruct-NPU   # VS Code autocomplete"
+    echo "    lemonade pull nomic-embed-text-v2-moe-GGUF       # RAG embeddings"
+    echo "  iGPU models (big reasoning) — ramalama aliases from ~/.zshrc:"
+    echo "    serve-brain    goose-brain    goose-dense"
+    echo ""
+    echo "  NOTE: if this was the first memlock configuration, reboot before pulling NPU models."

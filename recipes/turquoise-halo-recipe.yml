@@ -22,14 +22,13 @@ modules:
 
   # ── Kernel arguments (doc 3.A + 5.A.2) ────────────────────────────────────
   # amd_pstate=active: fixes 10–15W idle / warm palm rest (default mode is broken).
-  # amdgpu.gttsize (MB) + ttm.pages_limit (4K pages) expose ~124GB to the iGPU for
+  # ttm.pages_limit (4K pages) exposes ~124GB to the iGPU for
   # local LLM inference. Applied on `bootc upgrade`; verify with `rpm-ostree kargs`.
   # NOT added: amd_iommu=off (LLM-perf karg, DMA-isolation tradeoff — verify suspend
   # with `amd-s2idle test` on hardware first); processor.max_cstate=1 (hurts battery).
   - type: kargs
     kargs:
       - amd_pstate=active
-      - amdgpu.gttsize=126976
       - ttm.pages_limit=32505856
 
   # ── Webcam kmod — AMD ISP4 (doc 3.B) ──────────────────────────────────────
