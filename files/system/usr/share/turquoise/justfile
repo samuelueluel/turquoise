@@ -661,9 +661,12 @@ halo-npu mode:
         ;;
     esac
 
-# Set up the local LLM stack: NPU distrobox (XRT + FLM + lemond), memlock fix, user service (turquoise-halo only)
-# Run after 'sjust halo' + reboot. Idempotent — safe to re-run.
-# See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md §2.C
+# Set up the local NPU LLM stack inside an Ubuntu distrobox: XRT + FastFlowLM (NPU backend) +
+# Lemonade (orchestrator on :13305), memlock fix, user service (turquoise-halo only).
+# Lemonade is the server clients talk to; it calls FLM for NPU models and llama.cpp for GGUFs.
+# Run after 'sjust halo' + reboot. Idempotent and self-healing — each piece is checked
+# independently, so a partial/interrupted run is completed (not redone) on the next invocation.
+# See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md §2.C / §5.B.2
 halo-llm:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -701,68 +704,99 @@ halo-llm:
         pass "Created."
     fi
 
-    # 3. XRT + FastFlowLM + lemonade-server inside the distrobox
-    echo -e "\n\033[34m=== 3/4 XRT + FastFlowLM + lemonade-server inside distrobox ===\033[0m"
-    if distrobox enter npu-lemonade -- bash -c "command -v flm && command -v lemond" &>/dev/null; then
-        pass "Already installed."
+    # 3. XRT + Lemonade + FastFlowLM inside the distrobox — two INDEPENDENT installs so a
+    # partial state (e.g. FLM present but Lemonade missing) is completed, not redone, on re-run:
+    #   - lemonade-server (PPA) → 'lemond' (server daemon) + 'lemonade' (CLI) — the orchestrator
+    #   - FastFlowLM (GitHub .deb) → 'flm' — the NPU inference backend Lemonade calls
+    # amdxdna-dkms is deliberately NOT installed: the host's in-tree kernel-7.0 amdxdna driver
+    # already provides /dev/accel/accel0, and a DKMS build inside the container would target the
+    # wrong (container) kernel headers, not the running host kernel.
+    echo -e "\n\033[34m=== 3/4 XRT + Lemonade + FastFlowLM inside distrobox ===\033[0m"
+    inbox() { distrobox enter npu-lemonade -- bash -lc "$1"; }
+
+    # 3a. XRT + Lemonade from ppa:lemonade-team/stable
+    if inbox 'command -v lemond' &>/dev/null; then
+        pass "Lemonade (lemond) already installed."
     else
-        info "Fetching latest FLM release..."
-        FLM_URL=$(curl -sf https://api.github.com/repos/FastFlowLM/FastFlowLM/releases/latest \
-            | python3 -c "import json,sys; a=[x for x in json.load(sys.stdin)['assets'] if 'ubuntu24.04' in x['name']]; print(a[0]['browser_download_url'])")
-        info "Installing inside distrobox (apt + deb download — a few minutes)..."
-        distrobox enter npu-lemonade -- bash -c "
+        info "Installing XRT + Lemonade from ppa:lemonade-team/stable (apt — a few minutes)..."
+        inbox '
             set -euo pipefail
             sudo apt-get update -qq
-            sudo apt-get install -y software-properties-common wget -qq
+            sudo apt-get install -y -qq software-properties-common wget
             sudo add-apt-repository -y ppa:lemonade-team/stable 2>&1 | tail -1
             sudo apt-get update -qq
-            sudo apt-get install -y libxrt-npu2 lemonade-server -qq
-            wget -q '$FLM_URL' -O /tmp/flm.deb
-            sudo apt-get install -y /tmp/flm.deb -qq
-        "
-        pass "Installed."
+            sudo apt-get install -y -qq libxrt-npu2 lemonade-server
+        '
+        pass "Lemonade installed."
     fi
+
+    # 3b. FastFlowLM (NPU backend) — latest ubuntu24.04 .deb from GitHub releases
+    if inbox 'command -v flm' &>/dev/null; then
+        pass "FastFlowLM (flm) already installed."
+    else
+        info "Fetching latest FLM ubuntu24.04 .deb..."
+        FLM_URL=$(curl -sf https://api.github.com/repos/FastFlowLM/FastFlowLM/releases/latest \
+            | python3 -c "import json,sys; a=[x for x in json.load(sys.stdin)['assets'] if 'ubuntu24.04' in x['name'] and x['name'].endswith('.deb')]; print(a[0]['browser_download_url'] if a else '')")
+        [[ -n "$FLM_URL" ]] || { fail "No FLM ubuntu24.04 .deb asset found in the latest release."; exit 1; }
+        info "Installing FLM ($FLM_URL)..."
+        inbox "
+            set -euo pipefail
+            wget -q '$FLM_URL' -O /tmp/flm.deb
+            sudo apt-get install -y -qq /tmp/flm.deb
+            rm -f /tmp/flm.deb
+        "
+        pass "FastFlowLM installed."
+    fi
+
     info "Validating NPU stack..."
-    distrobox enter npu-lemonade -- flm validate
+    inbox 'flm validate'
 
-    # 4. npu-lemond user service — runs the distrobox lemond on :13305.
-    # The Ubuntu lemond binary (with XRT + FLM support) replaces the host RPM lemond.
-    # Distrobox uses host networking, so :13305 is accessible from the host unchanged.
+    # 4. npu-lemond user service — runs the in-box lemond (XRT + FLM aware) on :13305.
+    # Distrobox shares the host network namespace, so 127.0.0.1:13305 is identical inside and out.
+    # The host RPM lemond has no XRT/FLM, so it's disabled to avoid grabbing the port first.
     echo -e "\n\033[34m=== 4/4 npu-lemond user service ===\033[0m"
-    # Disable host lemond to avoid port 13305 conflict
-    systemctl --user stop  lemond.service 2>/dev/null || true
-    systemctl --user disable lemond.service 2>/dev/null || true
+    if ! inbox 'command -v lemond' &>/dev/null; then
+        fail "lemond not found in the distrobox — step 3a did not complete. Aborting before service setup."
+        exit 1
+    fi
+    systemctl --user disable --now lemond.service 2>/dev/null || true   # host RPM lemond (NPU-incapable)
 
-    mkdir -p ~/.config/systemd/user/
+    UNIT="$HOME/.config/systemd/user/npu-lemond.service"
+    mkdir -p "$(dirname "$UNIT")"
     printf '%s\n' \
         '[Unit]' \
-        'Description=Lemonade Server (NPU, via npu-lemonade distrobox)' \
-        'After=network-online.target' \
+        'Description=Lemonade Server (NPU) via npu-lemonade distrobox' \
         '' \
         '[Service]' \
         'Type=simple' \
-        'ExecStart=distrobox enter npu-lemonade -- lemond' \
+        'ExecStart=distrobox enter npu-lemonade -- bash -lc "exec lemond"' \
         'Restart=on-failure' \
         'RestartSec=5s' \
         '' \
         '[Install]' \
         'WantedBy=default.target' \
-        > ~/.config/systemd/user/npu-lemond.service
+        > "$UNIT"
     systemctl --user daemon-reload
     systemctl --user enable --now npu-lemond.service
     sleep 3
     if systemctl --user is-active --quiet npu-lemond.service; then
         pass "npu-lemond.service running on :13305"
     else
-        fail "Service failed to start — check: journalctl --user -u npu-lemond.service -n 30"
+        fail "Service not active yet — check: journalctl --user -u npu-lemond.service -n 30"
     fi
 
     echo ""
-    echo -e "\033[32mLocal LLM stack ready.\033[0m"
-    echo "  NPU models (autocomplete + embeddings) — pull with lemonade:"
-    echo "    lemonade pull Qwen2.5-Coder-1.5B-Instruct-NPU   # VS Code autocomplete"
-    echo "    lemonade pull nomic-embed-text-v2-moe-GGUF       # RAG embeddings"
+    echo -e "\033[32mNPU stack ready (Lemonade + FastFlowLM on :13305).\033[0m"
+    echo "  Pull NPU models via the lemonade CLI (the server is running now):"
+    echo "    distrobox enter npu-lemonade -- lemonade list   # NPU models are the 'flm'-backend rows (-FLM suffix)"
+    echo "    # Autocomplete — FastFlowLM has NO dedicated coder, so use a small GENERAL NPU model:"
+    echo "    distrobox enter npu-lemonade -- lemonade pull qwen2.5-it-3b-FLM"
+    echo "    # Embeddings on the NPU (silent, ~3W) — FLM's only embedder:"
+    echo "    distrobox enter npu-lemonade -- lemonade pull embed-gemma-300m-FLM"
+    echo "    # Higher-quality embeddings (runs on the iGPU via llama.cpp, NOT the NPU):"
+    echo "    distrobox enter npu-lemonade -- lemonade pull user.nomic-embed --checkpoint 'nomic-ai/nomic-embed-text-v1-GGUF:Q4_K_S' --recipe llamacpp --label embeddings"
+    echo ""
     echo "  iGPU models (big reasoning) — ramalama aliases from ~/.zshrc:"
     echo "    serve-brain    goose-brain    goose-dense"
     echo ""
-    echo "  NOTE: if this was the first memlock configuration, reboot before pulling NPU models."
+    echo "  NOTE: if this was the first memlock configuration, reboot before NPU inference works."
