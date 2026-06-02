@@ -734,20 +734,20 @@ halo-llm:
     systemctl --user disable lemond.service 2>/dev/null || true
 
     mkdir -p ~/.config/systemd/user/
-    cat > ~/.config/systemd/user/npu-lemond.service << 'EOF'
-[Unit]
-Description=Lemonade Server (NPU, via npu-lemonade distrobox)
-After=network-online.target
-
-[Service]
-Type=simple
-ExecStart=distrobox enter npu-lemonade -- lemond
-Restart=on-failure
-RestartSec=5s
-
-[Install]
-WantedBy=default.target
-EOF
+    printf '%s\n' \
+        '[Unit]' \
+        'Description=Lemonade Server (NPU, via npu-lemonade distrobox)' \
+        'After=network-online.target' \
+        '' \
+        '[Service]' \
+        'Type=simple' \
+        'ExecStart=distrobox enter npu-lemonade -- lemond' \
+        'Restart=on-failure' \
+        'RestartSec=5s' \
+        '' \
+        '[Install]' \
+        'WantedBy=default.target' \
+        > ~/.config/systemd/user/npu-lemond.service
     systemctl --user daemon-reload
     systemctl --user enable --now npu-lemond.service
     sleep 3
