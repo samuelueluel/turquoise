@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# mt7925-bt-suspend-fix
+#
+# Workaround for the MediaTek MT7925 Wi-Fi/BT combo (USB 0e8d:8c38) on the
+# HP ZBook Ultra G1a. The Bluetooth controller does not survive an s2idle
+# suspend/resume cycle: on resume the bound driver fails to re-init the chip
+# and it hard-wedges, requiring a full cold boot to recover. Journal signature:
+#
+#   hci0: Execution of wmt command timed out
+#   hci0: Failed to set up firmware (-110)
+#   hci0: HW/SW Version: 0x00000000
+#
+# Unloading btusb before suspend (so the driver isn't bound across the power
+# transition) and reloading it after resume forces a clean re-probe + firmware
+# download, avoiding the wedge. btmtk is pulled/dropped automatically as a
+# dependency of btusb.
+#
+# REMOVE this hook once a kernel/firmware fix for MT7925 s2idle lands.
+# See the hardware note (doc §5) for context.
+
+set -u
+
+case "$1" in
+  pre)
+    # Tear the driver down before we sleep.
+    modprobe -r btusb 2>/dev/null || true
+    ;;
+  post)
+    # Let USB settle after resume, then re-probe the controller.
+    sleep 1
+    modprobe btusb 2>/dev/null || true
+    ;;
+esac
