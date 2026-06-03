@@ -823,6 +823,7 @@ halo-llm-gpu:
     RAMA_IMG=docker.io/kyuz0/amd-strix-halo-toolboxes:vulkan-radv
     BRAIN_MODEL=hf://unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q8_K_XL
     CODER_MODEL=hf://Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF:Q4_K_M
+    EMBED_MODEL=hf://Qwen/Qwen3-Embedding-8B-GGUF:Q4_K_M
 
     # 1. ramalama — installed via ~/.Brewfile (sjust brew). Serving happens through the
     # serve-brain alias in ~/.zshrc, which runs this image with MTP speculative-decoding opts.
@@ -858,12 +859,23 @@ halo-llm-gpu:
     # 4. Autocomplete coder — small Qwen2.5-Coder GGUF (~1 GB) for VS Code ghost text via the
     # serve-coder alias on :8081, alongside the brain. FIM-capable (real code, not prose); the
     # NPU has no coder model so this must live on the iGPU. Continue's autocomplete role → :8081.
-    echo -e "\n\033[34m=== 4/4 Qwen2.5-Coder-1.5B autocomplete model (~1 GB) ===\033[0m"
+    echo -e "\n\033[34m=== 4/5 Qwen2.5-Coder-1.5B autocomplete model (~1 GB) ===\033[0m"
     if ramalama list 2>/dev/null | grep -q 'Qwen2.5-Coder-1.5B'; then
         pass "Model already pulled."
     else
         info "Pulling $CODER_MODEL (~1 GB)..."
         ramalama pull "$CODER_MODEL"
+        pass "Pulled."
+    fi
+
+    # 5. Embedder model — Qwen3-Embedding-8B GGUF (~4.6 GB) for vector embeddings via the
+    # serve-embedder alias on :8082, replacing the old NPU-based FastFlowLM embedder.
+    echo -e "\n\033[34m=== 5/5 Qwen3-Embedding-8B embedder model (~4.6 GB) ===\033[0m"
+    if ramalama list 2>/dev/null | grep -q 'Qwen3-Embedding-8B'; then
+        pass "Model already pulled."
+    else
+        info "Pulling $EMBED_MODEL (~4.6 GB)..."
+        ramalama pull "$EMBED_MODEL"
         pass "Pulled."
     fi
 

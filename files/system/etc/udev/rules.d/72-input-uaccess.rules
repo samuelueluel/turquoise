@@ -1,0 +1,5 @@
+# Grant the logged-in seat user a direct ACL on keyboard input event devices.
+# Needed by wayvibes (typing sound effects): the `input` group approach fails on
+# this atomic image because lingering keeps the systemd user manager alive across
+# logout, so it never picks up group membership. uaccess sidesteps the group.
+KERNEL=="event*", SUBSYSTEM=="input", TAG+="uaccess"
