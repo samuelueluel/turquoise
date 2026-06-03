@@ -803,10 +803,13 @@ halo-llm:
 # Provision the iGPU LLM stack: the kyuz0 Strix Halo Vulkan/RADV llama.cpp toolbox image +
 # the Qwen3.6-35B-A3B brain model for ramalama (turquoise-halo only). This is the big-reasoning
 # iGPU path that complements the NPU stack from 'halo-llm'. ramalama itself comes from ~/.Brewfile
-# (sjust brew); the serve-brain/goose-brain/aider-brain aliases come from ~/.zshrc (dotfiles).
-# Run after 'sjust brew'. Idempotent — the (multi-GB) image and (~37 GB) model are pulled only
-# if absent, so re-running on a provisioned box is a no-op.
-# See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md §2.A / §2.B
+# (sjust brew); the serve-brain/serve-coder/goose-brain/aider-brain aliases come from ~/.zshrc.
+# Pulls two iGPU models: the ~37 GB Qwen3.6-35B-A3B brain (serve-brain :8080) and the ~1 GB
+# Qwen2.5-Coder-1.5B autocomplete coder (serve-coder :8081, for VS Code/Continue ghost text —
+# the NPU has no coder model so FIM completion must run here).
+# Run after 'sjust brew'. Idempotent — image and both models are pulled only if absent, so
+# re-running on a provisioned box is a no-op.
+# See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md §2.A / §2.B / §2.J
 halo-llm-gpu:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -819,10 +822,11 @@ halo-llm-gpu:
 
     RAMA_IMG=docker.io/kyuz0/amd-strix-halo-toolboxes:vulkan-radv
     BRAIN_MODEL=hf://unsloth/Qwen3.6-35B-A3B-MTP-GGUF:UD-Q8_K_XL
+    CODER_MODEL=hf://Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF:Q4_K_M
 
     # 1. ramalama — installed via ~/.Brewfile (sjust brew). Serving happens through the
     # serve-brain alias in ~/.zshrc, which runs this image with MTP speculative-decoding opts.
-    echo -e "\n\033[34m=== 1/3 ramalama present ===\033[0m"
+    echo -e "\n\033[34m=== 1/4 ramalama present ===\033[0m"
     if command -v ramalama &>/dev/null; then
         pass "ramalama $(ramalama version 2>/dev/null | awk '{print $NF}') present."
     else
@@ -832,7 +836,7 @@ halo-llm-gpu:
 
     # 2. kyuz0 Strix Halo toolbox (Vulkan/RADV llama.cpp) — the container ramalama serves into.
     # RADV is the stable/fast path on RDNA 3.5; avoids ROCm instability on this APU.
-    echo -e "\n\033[34m=== 2/3 Vulkan/RADV toolbox image ===\033[0m"
+    echo -e "\n\033[34m=== 2/4 Vulkan/RADV toolbox image ===\033[0m"
     if podman image exists "$RAMA_IMG"; then
         pass "Image already present: $RAMA_IMG"
     else
@@ -842,7 +846,7 @@ halo-llm-gpu:
     fi
 
     # 3. Brain model — Qwen3.6-35B-A3B MoE, Q8 + MTP draft weights (~37 GB GGUF).
-    echo -e "\n\033[34m=== 3/3 Qwen3.6-35B-A3B brain model (~37 GB) ===\033[0m"
+    echo -e "\n\033[34m=== 3/4 Qwen3.6-35B-A3B brain model (~37 GB) ===\033[0m"
     if ramalama list 2>/dev/null | grep -q 'Qwen3.6-35B-A3B-MTP'; then
         pass "Model already pulled."
     else
@@ -851,10 +855,23 @@ halo-llm-gpu:
         pass "Pulled."
     fi
 
+    # 4. Autocomplete coder — small Qwen2.5-Coder GGUF (~1 GB) for VS Code ghost text via the
+    # serve-coder alias on :8081, alongside the brain. FIM-capable (real code, not prose); the
+    # NPU has no coder model so this must live on the iGPU. Continue's autocomplete role → :8081.
+    echo -e "\n\033[34m=== 4/4 Qwen2.5-Coder-1.5B autocomplete model (~1 GB) ===\033[0m"
+    if ramalama list 2>/dev/null | grep -q 'Qwen2.5-Coder-1.5B'; then
+        pass "Model already pulled."
+    else
+        info "Pulling $CODER_MODEL (~1 GB)..."
+        ramalama pull "$CODER_MODEL"
+        pass "Pulled."
+    fi
+
     echo ""
-    echo -e "\033[32miGPU LLM ready.\033[0m Serve it (open a NEW shell so the fixed alias loads):"
-    echo "    serve-brain                              # serves on :8080 with MTP"
-    echo "    curl -sf http://localhost:8080/v1/models # verify the endpoint is up"
+    echo -e "\033[32miGPU LLM ready.\033[0m Serve it (open a NEW shell so the fixed aliases load):"
+    echo "    serve-brain                              # brain on :8080 (chat/edit, MTP)"
+    echo "    serve-coder                              # coder on :8081 (VS Code autocomplete, FIM)"
+    echo "    curl -sf http://localhost:8080/v1/models # verify the brain endpoint is up"
     echo "    amdgpu_top                               # watch GTT (NOT the 512 MB VRAM line) for real GPU-RAM use"
     echo ""
     echo "  Coding agents (also from ~/.zshrc):  goose-brain    goose-dense    aider-brain"

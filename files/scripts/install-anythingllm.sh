@@ -29,11 +29,13 @@ chmod -R a+rX /usr/lib/anythingllm
 # (Checks common naming patterns inside the AppImage)
 if [ -f /usr/lib/anythingllm/anythingllm ]; then
     ln -sf /usr/lib/anythingllm/anythingllm /usr/bin/anythingllm
+elif [ -f /usr/lib/anythingllm/anythingllm-desktop ]; then
+    ln -sf /usr/lib/anythingllm/anythingllm-desktop /usr/bin/anythingllm
 elif [ -f /usr/lib/anythingllm/anything-llm-desktop ]; then
     ln -sf /usr/lib/anythingllm/anything-llm-desktop /usr/bin/anythingllm
 else
-    # Find any executable in the root as fallback
-    EXE_PATH=$(find /usr/lib/anythingllm -maxdepth 1 -executable -type f | head -n 1)
+    # Find any executable in the root as fallback (excluding shared libraries and helpers)
+    EXE_PATH=$(find /usr/lib/anythingllm -maxdepth 1 -executable -type f ! -name "*.so*" ! -name "chrome-sandbox" ! -name "chrome_crashpad_handler" | head -n 1)
     ln -sf "$EXE_PATH" /usr/bin/anythingllm
 fi
 
