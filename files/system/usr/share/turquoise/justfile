@@ -12,7 +12,7 @@ default:
 # Full setup — run everything in order
 setup: dirs zen chezmoi zen-extensions brew pipx flatpaks system
     update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
-    gtk-update-icon-cache -f -t /usr/share/icons/oreo_spark_orange_cursors 2>/dev/null || true
+    gtk-update-icon-cache -f -t /usr/share/icons/oreo_spark_lime_cursors 2>/dev/null || true
     gtk-update-icon-cache -f -t /usr/share/icons/Papirus 2>/dev/null || true
     @echo ""
     @echo "Done. Manual steps remaining:"
@@ -95,7 +95,7 @@ chezmoi:
     chezmoi apply --force
     systemctl --user enable empty-trash.service || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus
-    gsettings set org.gnome.desktop.interface cursor-theme oreo_spark_orange_cursors
+    gsettings set org.gnome.desktop.interface cursor-theme oreo_spark_lime_cursors
     systemctl --user restart xdg-desktop-portal-gtk.service 2>/dev/null || true
     systemctl --user restart xdg-desktop-portal.service 2>/dev/null || true
 
@@ -969,6 +969,101 @@ halo-llm-webui:
     echo "  LAN access also needs (one-time, sudo):"
     echo "    sudo firewall-cmd --add-port=3000/tcp --permanent && sudo firewall-cmd --reload"
     echo "    loginctl enable-linger $USER      # start at boot without an active login"
+
+# Set up SearXNG as a local web search backend for Open WebUI.
+# SearXNG is a self-hosted meta search engine that provides Open WebUI's agentic
+# web search with no API key and no rate limits.
+# See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md § 8.D.3
+# Idempotent — re-running ensures the config, image, and service are in place.
+halo-llm-searxng:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(cat /usr/share/turquoise/image-id 2>/dev/null)" != "turquoise-halo" ]]; then
+        echo -e "\033[31mThis recipe is for the turquoise-halo image only.\033[0m"; exit 1
+    fi
+    pass() { echo -e "  \033[32m✓\033[0m $*"; }
+    info() { echo -e "  \033[34m→\033[0m $*"; }
+    fail() { echo -e "  \033[31m✗\033[0m $*"; }
+
+    SEARXNG_IMG=docker.io/searxng/searxng:latest
+    QUADLET="$HOME/.config/containers/systemd/searxng.container"
+    CONFIG_DIR="$HOME/.config/searxng"
+    SETTINGS="$CONFIG_DIR/settings.yml"
+
+    # 1. Config
+    echo -e "\n\033[34m=== 1/3 SearXNG config ===\033[0m"
+    mkdir -p "$CONFIG_DIR"
+    if [[ -f "$SETTINGS" ]]; then
+        pass "settings.yml already present — skipping."
+    else
+        info "Writing settings.yml..."
+        SECRET=$(openssl rand -hex 32)
+        printf '%s\n' \
+            'use_default_settings: true' \
+            '' \
+            'server:' \
+            "  secret_key: \"$SECRET\"" \
+            '  limiter: false' \
+            '  image_proxy: false' \
+            '' \
+            'search:' \
+            '  formats:' \
+            '    - html' \
+            '    - json' \
+            > "$SETTINGS"
+        pass "Wrote $SETTINGS"
+    fi
+
+    # 2. Quadlet unit
+    echo -e "\n\033[34m=== 2/3 Quadlet unit ===\033[0m"
+    printf '%s\n' \
+        '[Unit]' \
+        'Description=SearXNG (local web search backend for Open WebUI)' \
+        'After=network-online.target' \
+        'Wants=network-online.target' \
+        '' \
+        '[Container]' \
+        'ContainerName=searxng' \
+        "Image=$SEARXNG_IMG" \
+        'PublishPort=8888:8080' \
+        "Volume=$CONFIG_DIR:/etc/searxng:Z" \
+        'AutoUpdate=registry' \
+        '' \
+        '[Service]' \
+        'Restart=always' \
+        '' \
+        '[Install]' \
+        'WantedBy=default.target' \
+        > "$QUADLET"
+    pass "Wrote $QUADLET"
+
+    # 3. Image + service
+    echo -e "\n\033[34m=== 3/3 SearXNG image + service ===\033[0m"
+    if podman image exists "$SEARXNG_IMG"; then
+        pass "Image already present."
+    else
+        info "Pulling $SEARXNG_IMG..."
+        podman pull "$SEARXNG_IMG"
+        pass "Pulled."
+    fi
+    systemctl --user daemon-reload
+    systemctl --user start searxng.service
+    for i in $(seq 1 15); do curl -sf "http://localhost:8888/search?q=test&format=json" >/dev/null 2>&1 && break; sleep 2; done
+    if curl -sf "http://localhost:8888/search?q=test&format=json" >/dev/null 2>&1; then
+        pass "Running and responding on :8888"
+    else
+        fail "Not healthy — check: journalctl --user -u searxng.service -n 40"
+    fi
+
+    echo ""
+    echo -e "\033[32mSearXNG ready.\033[0m"
+    echo "  Search API: http://localhost:8888/search?q=test&format=json"
+    echo ""
+    echo "  Configure Open WebUI (Admin Panel → Settings → Web Search):"
+    echo "    Engine:                  SearXNG"
+    echo "    Query URL:               http://localhost:8888/search?q=<query>&format=json"
+    echo "    Bypass Web Loader:       on"
+    echo "    Bypass Embedding+RAG:    on"
 
 # Set up the Goose terminal agent via a Podman container.
 # This pulls the official Goose image so it can be run in a rootless sandbox,
