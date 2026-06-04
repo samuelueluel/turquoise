@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "/var/home/samuel/turquoise": {
+      "path": "/var/home/samuel/turquoise",
+      "last_accessed": "2026-06-04T01:20:41.378734690Z",
+      "last_instruction": null,
+      "last_session_id": null
+    },
+    "/home/goose": {
+      "path": "/home/goose",
+      "last_accessed": "2026-06-04T01:20:52.513067948Z",
+      "last_instruction": null,
+      "last_session_id": null
+    }
+  }
+}

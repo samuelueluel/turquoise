@@ -1,0 +1,2 @@
+{"timestamp":"2026-06-04T01:10:57.756563Z","level":"INFO","fields":{"message":"CLI command executed","monotonic_counter.goose.cli_commands":1,"command":"session"},"target":"goose_cli::cli"}
+{"timestamp":"2026-06-04T01:10:59.988092Z","level":"INFO","fields":{"message":"Session started","monotonic_counter.goose.session_starts":1,"session_type":"new","interactive":true},"target":"goose_cli::cli"}

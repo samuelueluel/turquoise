@@ -870,13 +870,27 @@ halo-llm-gpu:
 
     # 5. Embedder model — Qwen3-Embedding-8B GGUF (~4.6 GB) for vector embeddings via the
     # serve-embedder alias on :8082, replacing the old NPU-based FastFlowLM embedder.
-    echo -e "\n\033[34m=== 5/5 Qwen3-Embedding-8B embedder model (~4.6 GB) ===\033[0m"
+    echo -e "\n\033[34m=== 5/6 Qwen3-Embedding-8B embedder model (~4.6 GB) ===\033[0m"
     if ramalama list 2>/dev/null | grep -q 'Qwen3-Embedding-8B'; then
         pass "Model already pulled."
     else
         info "Pulling $EMBED_MODEL (~4.6 GB)..."
         ramalama pull "$EMBED_MODEL"
         pass "Pulled."
+    fi
+
+    # 6. Goose SearXNG venv — tiny Python venv (~15 MB) that backs the stdio MCP extension
+    # registered in ~/.config/goose/config.yaml. The script and config are in dotfiles (chezmoi);
+    # only the venv must be created on first provision since it can't go in dotfiles.
+    echo -e "\n\033[34m=== 6/6 Goose SearXNG venv ===\033[0m"
+    VENV="$HOME/.config/goose/searxng-venv"
+    if [[ -x "$VENV/bin/python3" ]]; then
+        pass "Venv already present at $VENV"
+    else
+        info "Creating venv at $VENV..."
+        python3 -m venv "$VENV"
+        "$VENV/bin/pip" install --quiet mcp requests
+        pass "Created and installed mcp + requests."
     fi
 
     echo ""
@@ -887,6 +901,8 @@ halo-llm-gpu:
     echo "    amdgpu_top                               # watch GTT (NOT the 512 MB VRAM line) for real GPU-RAM use"
     echo ""
     echo "  Coding agents (also from ~/.zshrc):  goose-brain    goose-dense    aider-brain"
+    echo "  NOTE: goose routes through Open WebUI (:3000). On a fresh install, regenerate the"
+    echo "        Open WebUI PAT and update api_key in ~/.config/goose/config.yaml."
 
 # Open WebUI — local AI chat frontend (proper LaTeX/markdown rendering, conversation
 # history, RAG) pointed at the ramalama iGPU server on :8080. Runs as a Podman container
@@ -1087,8 +1103,9 @@ halo-llm-goose:
 
     echo ""
     echo -e "\033[32mGoose sandbox ready.\033[0m"
-    echo "  You can run it safely restricted to your workspace with:"
+    echo "  The goose-safe-1/2/3 aliases in ~/.zshrc handle config and sandboxing automatically."
+    echo "  For manual use (container entrypoint is already 'goose', so omit the 'goose' prefix):"
     echo "    podman run -it --rm --network=host --userns=keep-id \\"
     echo "      -v ~/workspace:/workspace:z -w /workspace \\"
-    echo "      ghcr.io/block/goose:latest goose session"
+    echo "      ghcr.io/block/goose:latest session"
 
