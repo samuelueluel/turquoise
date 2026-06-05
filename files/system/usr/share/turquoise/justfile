@@ -12,7 +12,7 @@ default:
 # Full setup — run everything in order
 setup: dirs zen chezmoi zen-extensions brew pipx flatpaks system
     update-desktop-database ~/.local/share/applications/ 2>/dev/null || true
-    gtk-update-icon-cache -f -t /usr/share/icons/oreo_spark_lime_cursors 2>/dev/null || true
+    gtk-update-icon-cache -f -t /usr/share/icons/oreo_white_cursors 2>/dev/null || true
     gtk-update-icon-cache -f -t /usr/share/icons/Papirus 2>/dev/null || true
     @echo ""
     @echo "Done. Manual steps remaining:"
@@ -95,7 +95,7 @@ chezmoi:
     chezmoi apply --force
     systemctl --user enable empty-trash.service || true
     gsettings set org.gnome.desktop.interface icon-theme Papirus
-    gsettings set org.gnome.desktop.interface cursor-theme oreo_spark_lime_cursors
+    gsettings set org.gnome.desktop.interface cursor-theme oreo_white_cursors
     systemctl --user restart xdg-desktop-portal-gtk.service 2>/dev/null || true
     systemctl --user restart xdg-desktop-portal.service 2>/dev/null || true
 
@@ -795,18 +795,18 @@ halo-llm:
     echo "    # Higher-quality embeddings (runs on the iGPU via llama.cpp, NOT the NPU):"
     echo "    distrobox enter npu-lemonade -- lemonade pull user.nomic-embed --checkpoint 'nomic-ai/nomic-embed-text-v1-GGUF:Q4_K_S' --recipe llamacpp --label embeddings"
     echo ""
-    echo "  iGPU models (big reasoning) — ramalama aliases from ~/.zshrc:"
-    echo "    serve-brain    goose-brain    goose-dense"
+    echo "  iGPU models (ramalama aliases from ~/.zshrc):"
+    echo "    serve-code   serve-think   serve-edit   serve-autocomplete   serve-embedder"
     echo ""
     echo "  NOTE: if this was the first memlock configuration, reboot before NPU inference works."
 
 # Provision the iGPU LLM stack: the kyuz0 Strix Halo Vulkan/RADV llama.cpp toolbox image +
-# the Qwen3.6-35B-A3B brain model for ramalama (turquoise-halo only). This is the big-reasoning
-# iGPU path that complements the NPU stack from 'halo-llm'. ramalama itself comes from ~/.Brewfile
-# (sjust brew); the serve-brain/serve-coder/goose-brain/aider-brain aliases come from ~/.zshrc.
-# Pulls two iGPU models: the ~37 GB Qwen3.6-35B-A3B brain (serve-brain :8080) and the ~1 GB
-# Qwen2.5-Coder-1.5B autocomplete coder (serve-coder :8081, for VS Code/Continue ghost text —
-# the NPU has no coder model so FIM completion must run here).
+# iGPU models for ramalama (turquoise-halo only). This is the big-reasoning iGPU path that
+# complements the NPU stack from 'halo-llm'. ramalama itself comes from ~/.Brewfile (sjust brew);
+# serve-code/serve-think/serve-edit/serve-autocomplete/serve-embedder aliases come from ~/.zshrc.
+# Pulls three models: ~37 GB Qwen3.6-35B-A3B MoE brain (serve-code :8080), ~1 GB
+# Qwen2.5-Coder-1.5B FIM coder (serve-autocomplete :8081, Zed edit prediction —
+# the NPU has no coder model so FIM completion must run here), ~4.6 GB Qwen3-Embedding-8B.
 # Run after 'sjust brew'. Idempotent — image and both models are pulled only if absent, so
 # re-running on a provisioned box is a no-op.
 # See: ~/Dropbox/.../Local LLMs/Strix Halo LLM Guide.md §2.A / §2.B / §2.J
@@ -826,8 +826,8 @@ halo-llm-gpu:
     EMBED_MODEL=hf://Qwen/Qwen3-Embedding-8B-GGUF:Q4_K_M
 
     # 1. ramalama — installed via ~/.Brewfile (sjust brew). Serving happens through the
-    # serve-brain alias in ~/.zshrc, which runs this image with MTP speculative-decoding opts.
-    echo -e "\n\033[34m=== 1/4 ramalama present ===\033[0m"
+    # serve-code/serve-think/serve-edit aliases in ~/.zshrc (with MTP speculative-decoding opts).
+    echo -e "\n\033[34m=== 1/6 ramalama present ===\033[0m"
     if command -v ramalama &>/dev/null; then
         pass "ramalama $(ramalama version 2>/dev/null | awk '{print $NF}') present."
     else
@@ -837,7 +837,7 @@ halo-llm-gpu:
 
     # 2. kyuz0 Strix Halo toolbox (Vulkan/RADV llama.cpp) — the container ramalama serves into.
     # RADV is the stable/fast path on RDNA 3.5; avoids ROCm instability on this APU.
-    echo -e "\n\033[34m=== 2/4 Vulkan/RADV toolbox image ===\033[0m"
+    echo -e "\n\033[34m=== 2/6 Vulkan/RADV toolbox image ===\033[0m"
     if podman image exists "$RAMA_IMG"; then
         pass "Image already present: $RAMA_IMG"
     else
@@ -847,7 +847,7 @@ halo-llm-gpu:
     fi
 
     # 3. Brain model — Qwen3.6-35B-A3B MoE, Q8 + MTP draft weights (~37 GB GGUF).
-    echo -e "\n\033[34m=== 3/4 Qwen3.6-35B-A3B brain model (~37 GB) ===\033[0m"
+    echo -e "\n\033[34m=== 3/6 Qwen3.6-35B-A3B brain model (~37 GB) ===\033[0m"
     if ramalama list 2>/dev/null | grep -q 'Qwen3.6-35B-A3B-MTP'; then
         pass "Model already pulled."
     else
@@ -856,10 +856,10 @@ halo-llm-gpu:
         pass "Pulled."
     fi
 
-    # 4. Autocomplete coder — small Qwen2.5-Coder GGUF (~1 GB) for VS Code ghost text via the
-    # serve-coder alias on :8081, alongside the brain. FIM-capable (real code, not prose); the
-    # NPU has no coder model so this must live on the iGPU. Continue's autocomplete role → :8081.
-    echo -e "\n\033[34m=== 4/5 Qwen2.5-Coder-1.5B autocomplete model (~1 GB) ===\033[0m"
+    # 4. Autocomplete coder — small Qwen2.5-Coder GGUF (~1 GB) for Zed edit prediction via the
+    # serve-autocomplete alias on :8081, alongside the main model. FIM-capable (real code, not prose);
+    # NPU has no coder model so this must live on the iGPU. Zed "edit_predictions" role → :8081.
+    echo -e "\n\033[34m=== 4/6 Qwen2.5-Coder-1.5B autocomplete model (~1 GB) ===\033[0m"
     if ramalama list 2>/dev/null | grep -q 'Qwen2.5-Coder-1.5B'; then
         pass "Model already pulled."
     else
@@ -879,30 +879,35 @@ halo-llm-gpu:
         pass "Pulled."
     fi
 
-    # 6. Goose SearXNG venv — tiny Python venv (~15 MB) that backs the stdio MCP extension
-    # registered in ~/.config/goose/config.yaml. The script and config are in dotfiles (chezmoi);
-    # only the venv must be created on first provision since it can't go in dotfiles.
-    echo -e "\n\033[34m=== 6/6 Goose SearXNG venv ===\033[0m"
-    VENV="$HOME/.config/goose/searxng-venv"
+    # 6. OpenCode SearXNG venv — tiny Python venv (~15 MB) that backs the stdio MCP extension
+    # registered in ~/.config/opencode/opencode.json. The MCP script and config are in dotfiles
+    # (chezmoi); only the venv must be created on first provision since it can't go in dotfiles.
+    echo -e "\n\033[34m=== 6/6 OpenCode SearXNG venv ===\033[0m"
+    VENV="$HOME/.config/opencode/searxng-venv"
     if [[ -x "$VENV/bin/python3" ]]; then
         pass "Venv already present at $VENV"
     else
         info "Creating venv at $VENV..."
+        mkdir -p "$(dirname "$VENV")"
         python3 -m venv "$VENV"
-        "$VENV/bin/pip" install --quiet mcp requests
+        "$VENV/bin/pip" install --quiet "mcp[cli]" requests
         pass "Created and installed mcp + requests."
     fi
 
     echo ""
-    echo -e "\033[32miGPU LLM ready.\033[0m Serve it (open a NEW shell so the fixed aliases load):"
-    echo "    serve-brain                              # brain on :8080 (chat/edit, MTP)"
-    echo "    serve-coder                              # coder on :8081 (VS Code autocomplete, FIM)"
-    echo "    curl -sf http://localhost:8080/v1/models # verify the brain endpoint is up"
+    echo -e "\033[32miGPU LLM ready.\033[0m Serve it (open a NEW shell so the aliases are available):"
+    echo "    serve-code                               # main model on :8080 (chat/edit, MTP)"
+    echo "    serve-think                              # dense 27B on :8080 (high-stakes reasoning)"
+    echo "    serve-autocomplete                       # FIM coder on :8081 (Zed edit prediction)"
+    echo "    serve-embedder                           # embedder on :8082"
+    echo "    model-check                              # verify which model is loaded on each port"
+    echo "    curl -sf http://localhost:8080/v1/models # verify the main model endpoint is up"
     echo "    amdgpu_top                               # watch GTT (NOT the 512 MB VRAM line) for real GPU-RAM use"
     echo ""
-    echo "  Coding agents (also from ~/.zshrc):  goose-brain    goose-dense    aider-brain"
-    echo "  NOTE: goose routes through Open WebUI (:3000). On a fresh install, regenerate the"
-    echo "        Open WebUI PAT and update api_key in ~/.config/goose/config.yaml."
+    echo "  Sandboxed coding agent (opencode-safe-* aliases in ~/.zshrc):"
+    echo "    opencode-rebuild                         # (re)build the container image"
+    echo "    opencode-safe-1 [dir]                    # writable dir + read-only home"
+    echo "    opencode-safe-2 [dir]                    # writable dir only (no home access)"
 
 # Open WebUI — local AI chat frontend (proper LaTeX/markdown rendering, conversation
 # history, RAG) pointed at the ramalama iGPU server on :8080. Runs as a Podman container
@@ -1081,11 +1086,11 @@ halo-llm-searxng:
     echo "    Bypass Web Loader:       on"
     echo "    Bypass Embedding+RAG:    on"
 
-# Set up the Goose terminal agent via a Podman container.
-# This pulls the official Goose image so it can be run in a rootless sandbox,
-# as detailed in the Quick Start § 2.E.
-# Idempotent — re-running will update the image if needed.
-halo-llm-goose:
+# Build the sandboxed OpenCode container image (localhost/opencode-safe:latest).
+# The Dockerfile and opencode.json live in ~/.config/opencode (chezmoi-managed dotfiles).
+# Re-run after updating ~/.config/opencode/Dockerfile or any config it bakes in.
+# After building, use the opencode-safe-1/2/3 aliases in ~/.zshrc (see § 2.E of the LLM Guide).
+halo-llm-opencode:
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ "$(cat /usr/share/turquoise/image-id 2>/dev/null)" != "turquoise-halo" ]]; then
@@ -1094,18 +1099,21 @@ halo-llm-goose:
     pass() { echo -e "  \033[32m✓\033[0m $*"; }
     info() { echo -e "  \033[34m→\033[0m $*"; }
 
-    GOOSE_IMG="ghcr.io/block/goose:latest"
+    DOCKERFILE="$HOME/.config/opencode/Dockerfile"
+    if [[ ! -f "$DOCKERFILE" ]]; then
+        echo -e "\033[31mDockerfile not found at $DOCKERFILE. Restore dotfiles first (chezmoi apply).\033[0m"
+        exit 1
+    fi
 
-    echo -e "\n\033[34m=== Podman Sandboxed Goose Image ===\033[0m"
-    info "Pulling $GOOSE_IMG..."
-    podman pull "$GOOSE_IMG"
-    pass "Image pulled and ready."
+    echo -e "\n\033[34m=== Building localhost/opencode-safe:latest ===\033[0m"
+    info "Building from $HOME/.config/opencode ..."
+    podman build --no-cache -t localhost/opencode-safe:latest "$HOME/.config/opencode"
+    pass "Image built and ready."
 
     echo ""
-    echo -e "\033[32mGoose sandbox ready.\033[0m"
-    echo "  The goose-safe-1/2/3 aliases in ~/.zshrc handle config and sandboxing automatically."
-    echo "  For manual use (container entrypoint is already 'goose', so omit the 'goose' prefix):"
-    echo "    podman run -it --rm --network=host --userns=keep-id \\"
-    echo "      -v ~/workspace:/workspace:z -w /workspace \\"
-    echo "      ghcr.io/block/goose:latest session"
+    echo -e "\033[32mOpenCode sandbox ready.\033[0m"
+    echo "  Use the opencode-safe-* aliases in ~/.zshrc (see § 2.E of the LLM Guide):"
+    echo "    opencode-safe-1 [dir]   # writable dir + read-only home"
+    echo "    opencode-safe-2 [dir]   # writable dir only (no home access)"
+    echo "    opencode-safe-3 <file>  # single-file write access"
 

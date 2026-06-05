@@ -189,8 +189,7 @@ modules:
       install-weak-deps: false
       packages:
         - kitty # GPU-accelerated terminal; used specifically for yazi file previews
-        - neovim # required by vscode-neovim extension (spawns real nvim instance for VS Code Vim bindings)
-        - code # Visual Studio Code
+        - neovim # terminal editor; used for quick edits and as a fallback $EDITOR
         - tmux # terminal multiplexer; split panes + persistent sessions (used with neovim REPL workflow)
         - zsh # Z shell (primary interactive shell)
         - zsh-autosuggestions # fish-like command suggestions based on history

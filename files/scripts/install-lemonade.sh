@@ -3,7 +3,7 @@
 # official Fedora 44 RPM on GitHub releases. Tracks the latest release so the
 # image picks up new versions on each rebuild (like install-anythingllm.sh).
 # Provides the `lemonade-server` CLI + systemd integration, used for the
-# XDNA2 NPU path (VS Code autocomplete + RAG embeddings) on Strix Halo.
+# XDNA2 NPU path (Zed autocomplete + RAG embeddings) on Strix Halo.
 set -euo pipefail
 
 echo "Installing Lemonade Server (latest fc44 RPM)..."

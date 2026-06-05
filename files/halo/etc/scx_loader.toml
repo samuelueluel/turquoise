@@ -1,5 +1,5 @@
 # scx_loader config — auto-starts a sched-ext scheduler at boot via scx_loader.service.
-# scx_lavd (latency-aware) keeps niri/VS Code/cursor smooth under heavy Stata/LLM
+# scx_lavd (latency-aware) keeps niri/Zed smooth under heavy Stata/LLM
 # load on the 16-core dual-CCD CPU (<1% penalty to the background job). See hardware
 # note section 7. Hot-swap live with: sudo scxctl switch -s rusty
 #

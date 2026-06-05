@@ -50,7 +50,7 @@ modules:
   - type: dnf
     repos:
       copr:
-        - bieszczaders/kernel-cachyos-addons
+        - sirlucjan/scx-scheds-cargo
     install:
       install-weak-deps: false
       packages:
