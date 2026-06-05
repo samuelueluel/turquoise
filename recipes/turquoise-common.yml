@@ -746,5 +746,6 @@ modules:
         - mpd.service
         - rmpcd.service
         - pipx-update.timer
+        - podman-auto-update.timer
       disabled:
         - flatpak-user-update.timer
