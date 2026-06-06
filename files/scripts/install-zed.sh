@@ -26,4 +26,4 @@ if [ -f /usr/lib/zed.app/share/applications/zed.desktop ]; then
     sed -i 's|^Exec=.*|Exec=zed %F|' /usr/share/applications/zed.desktop
 fi
 
-echo "Done: $(zed --version 2>&1 | head -1)"
+echo "Done: $(zed --version 2>&1 | head -1 || echo 'Version check failed')"
