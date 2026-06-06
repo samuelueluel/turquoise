@@ -600,6 +600,18 @@ halo-verify:
     echo -e "\033[34mAC-wakeup suspend fix\033[0m"
     systemctl is-enabled ac-wakeup-disable.service &>/dev/null && pass "ac-wakeup-disable.service enabled" || fail "ac-wakeup-disable.service not enabled"
 
+    echo -e "\033[34mKeyboard suspend wakeup fix\033[0m"
+    if [[ -f /sys/bus/serio/devices/serio0/power/wakeup ]]; then
+        WAKE_STATE="$(cat /sys/bus/serio/devices/serio0/power/wakeup 2>/dev/null || true)"
+        if [[ "$WAKE_STATE" == "disabled" ]]; then
+            pass "serio0 keyboard wakeup disabled"
+        else
+            warn "serio0 keyboard wakeup is $WAKE_STATE (should be disabled via udev)"
+        fi
+    else
+        warn "serio0 keyboard wakeup file not found"
+    fi
+
     echo -e "\033[34miGPU memory (GTT)\033[0m"
     if journalctl -k -g 'GTT memory' 2>/dev/null | grep -qi 'GTT memory'; then
         pass "$(journalctl -k -g 'GTT memory' 2>/dev/null | tail -1 | sed 's/.*]: *//')"

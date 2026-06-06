@@ -1,0 +1,7 @@
+# Workaround for HP ZBook Ultra G1a 14" (board name 8D01) Modern Standby (s2idle)
+# The PS/2 keyboard controller (atkbd) is registered as a wakeup source, which prevents
+# the AMD SoC from entering the deepest sleep state (PC10/S0i3) during suspend.
+# This udev rule disables the wakeup capability of the atkbd driver for board 8D01.
+# See: https://github.com/projectbluefin/bluefin/issues/383
+
+ACTION=="add", SUBSYSTEM=="serio", DRIVERS=="atkbd", ATTRS{board_vendor}=="HP", ATTRS{board_name}=="8D01", ATTR{power/wakeup}="disabled"
