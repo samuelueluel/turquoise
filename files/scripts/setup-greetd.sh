@@ -16,8 +16,19 @@ mkdir -p /etc/greetd
 
 cat > /etc/greetd/gtkgreet.css << 'EOF'
 window {
-    background-color: #914059;
-    color: #000000;
+    background-color: #6E3840;
+    color: #E2D8D0;
+}
+
+entry, button {
+    background-color: #1A1614;
+    color: #E2D8D0;
+    border-color: #1AAAD4;
+}
+
+selection {
+    background-color: #1AAAD4;
+    color: #1A1614;
 }
 EOF
 
