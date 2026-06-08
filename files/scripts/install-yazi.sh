@@ -4,11 +4,10 @@
 set -euo pipefail
 
 ARCH="x86_64"
-API_URL="https://api.github.com/repos/sxyazi/yazi/releases/latest"
 WORK_DIR="$(mktemp -d)"
 trap "rm -rf '$WORK_DIR'" EXIT
 
-VERSION=$(curl -fsSL --retry 5 --retry-delay 5 "$API_URL" | grep '"tag_name"' | cut -d'"' -f4)
+VERSION=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/sxyazi/yazi.git | tail -n1 | cut -d/ -f3)
 TARBALL="yazi-${ARCH}-unknown-linux-musl.zip"
 URL="https://github.com/sxyazi/yazi/releases/download/${VERSION}/${TARBALL}"
 

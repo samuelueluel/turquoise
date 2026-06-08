@@ -8,17 +8,12 @@ set -euo pipefail
 
 echo "Installing Lemonade Server (latest fc44 RPM)..."
 
-API="https://api.github.com/repos/lemonade-sdk/lemonade/releases/latest"
+VERSION=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/lemonade-sdk/lemonade.git | tail -n1 | cut -d/ -f3)
+RPM_URL="https://github.com/lemonade-sdk/lemonade/releases/download/${VERSION}/lemonade-server-${VERSION#v}-fc44.x86_64.rpm"
 
-# Resolve the Fedora 44 x86_64 RPM asset URL from the latest release.
-RPM_URL="$(curl -fsSL --retry 5 --retry-delay 5 "$API" \
-  | grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]*fc44\.x86_64\.rpm"' \
-  | grep -oE 'https[^"]*' \
-  | head -n1)"
-
-if [ -z "${RPM_URL:-}" ]; then
-  echo "ERROR: no fc44 x86_64 RPM found in the latest Lemonade release." >&2
-  echo "Upstream may have changed its asset naming; check ${API}." >&2
+if ! curl -fsSLI --retry 5 --retry-delay 5 "$RPM_URL" > /dev/null; then
+  echo "ERROR: no fc44 x86_64 RPM found at ${RPM_URL}." >&2
+  echo "Upstream may have changed its asset naming; check https://github.com/lemonade-sdk/lemonade/releases/latest" >&2
   exit 1
 fi
 

@@ -3,18 +3,14 @@
 # bluetuith is not in Fedora repos or Homebrew; built with Go toolchain.
 set -euo pipefail
 
-API_URL="https://api.github.com/repos/darkhz/bluetuith/releases/latest"
 WORK_DIR="$(mktemp -d)"
 trap "rm -rf '$WORK_DIR'" EXIT
 
-CURL_AUTH=()
-[[ -n "${GITHUB_TOKEN:-}" ]] && CURL_AUTH=(-H "Authorization: Bearer $GITHUB_TOKEN")
-
-VERSION=$(curl -fsSL --retry 5 --retry-delay 5 "${CURL_AUTH[@]}" "$API_URL" | grep '"tag_name"' | cut -d'"' -f4)
+VERSION=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/darkhz/bluetuith.git | tail -n1 | cut -d/ -f3)
 echo "Building bluetuith ${VERSION}..."
 
 cd "$WORK_DIR"
-curl -fsSL --retry 5 --retry-delay 5 "${CURL_AUTH[@]}" "https://github.com/darkhz/bluetuith/archive/refs/tags/${VERSION}.tar.gz" \
+curl -fsSL --retry 5 --retry-delay 5 "https://github.com/darkhz/bluetuith/archive/refs/tags/${VERSION}.tar.gz" \
   | tar -xz
 cd "bluetuith-${VERSION#v}"
 

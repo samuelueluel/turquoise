@@ -3,9 +3,9 @@
 # keyd is not in Fedora repos; was in Terra which has recurring GPG issues.
 set -euo pipefail
 
-VERSION=$(curl -fsSL "https://api.github.com/repos/rvaiya/keyd/releases/latest" \
-  | grep '"tag_name"' | cut -d'"' -f4 | sed 's/^v//')
-TARBALL_URL="https://github.com/rvaiya/keyd/archive/refs/tags/v${VERSION}.tar.gz"
+VERSION_TAG=$(git ls-remote --tags --refs --sort='v:refname' https://github.com/rvaiya/keyd.git | tail -n1 | cut -d/ -f3)
+VERSION="${VERSION_TAG#v}"
+TARBALL_URL="https://github.com/rvaiya/keyd/archive/refs/tags/${VERSION_TAG}.tar.gz"
 BUILD_DIR="$(mktemp -d)"
 trap "rm -rf '$BUILD_DIR'" EXIT
 
