@@ -86,8 +86,6 @@ modules:
   # tuned: dynamically applies kernel tuning profiles.
   - type: systemd
     system:
-      disabled:
-        - power-profiles-daemon.service
       enabled:
         - ac-wakeup-disable.service
         - scx_loader.service
