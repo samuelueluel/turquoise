@@ -4,7 +4,7 @@
 set -euo pipefail
 
 REPO_URL="https://github.com/noctalia-dev/noctalia-shell"
-BRANCH="v5"
+BRANCH="main"
 BUILD_DIR="$(mktemp -d)"
 trap "rm -rf '$BUILD_DIR'" EXIT
 
