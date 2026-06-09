@@ -67,11 +67,23 @@ modules:
       packages:
         - linux-firmware
 
+  # ── LLM Performance Tuning ────────────────────────────────────────────────
+  # tuned and tuned-ppd (replaces power-profiles-daemon) for the 
+  # accelerator-performance profile which boosts prompt processing by 5-8%.
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - tuned
+        - tuned-ppd
+
   # ── Enable halo services ──────────────────────────────────────────────────
   # ac-wakeup-disable: stops the AC adapter triggering immediate resume (doc 3.E).
   # scx_loader: D-Bus daemon that loads the scheduler from scx_loader.toml at boot.
+  # tuned: dynamically applies kernel tuning profiles.
   - type: systemd
     system:
       enabled:
         - ac-wakeup-disable.service
         - scx_loader.service
+        - tuned.service
