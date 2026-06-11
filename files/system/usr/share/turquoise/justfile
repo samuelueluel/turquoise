@@ -228,7 +228,10 @@ flatpaks:
         org.fedoraproject.MediaWriter \
         com.github.PintaProject.Pinta \
         io.podman_desktop.PodmanDesktop \
-        org.freedesktop.Platform.ffmpeg-full//24.08
+        org.freedesktop.Platform.ffmpeg-full//24.08 \
+        com.valvesoftware.Steam \
+        net.davidotek.pupgui2 \
+        org.freedesktop.Platform.VulkanLayer.gamescope//24.08
     flatpak override --user --filesystem=xdg-config/gtk-3.0:ro io.github.quodlibet.QuodLibet || true
     flatpak override --user --env=QT_QPA_PLATFORMTHEME=qt6ct --filesystem=xdg-config/qt6ct:ro --filesystem=xdg-data/color-schemes:ro org.kde.okular || true
 
