@@ -80,6 +80,14 @@ modules:
         - tuned
         - tuned-ppd
 
+  # ── Stata GUI dependency ──────────────────────────────────────────────
+  # Stata's xstata-mp GUI requires GTK2's X11 backend; not pulled in by default.
+  - type: dnf
+    install:
+      install-weak-deps: false
+      packages:
+        - gtk2
+
   # ── Enable halo services ──────────────────────────────────────────────────
   # ac-wakeup-disable: stops the AC adapter triggering immediate resume (doc 3.E).
   # scx_loader: D-Bus daemon that loads the scheduler from scx_loader.toml at boot.
