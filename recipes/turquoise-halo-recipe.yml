@@ -5,7 +5,7 @@ image-version: latest
 
 # Same software/desktop stack as turquoise (via the shared include below) plus
 # Strix Halo hardware enablement. See the hardware notes at:
-#   ~/Dropbox/Sam_Personal_Vault/30_Personal/20_Personal_Interests/Custom Image/
+#   ~/Dropbox/Sam-Obsidian-Vault/30_Personal/20_Personal_Interests/Custom Image/
 #   HP ZBook Ultra G1a 14'' Ryzen AI Max+ 395.md
 # Section references (doc 3.A, 3.B, etc.) below point at that note.
 
