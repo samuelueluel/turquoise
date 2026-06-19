@@ -449,6 +449,14 @@ update:
         echo -e "\033[31m  Distrobox not found, skipping.\033[0m"
     fi
 
+    echo -e "\n\033[34m=== Rebuilding pi-safe Container ===\033[0m"
+    if [[ -f "$HOME/dotfiles/dot_pi/Containerfile" ]]; then
+        echo -e "\033[36m  \$ podman build --no-cache -t localhost/pi-safe:latest ...\033[0m"
+        podman build --no-cache -t localhost/pi-safe:latest -f "$HOME/dotfiles/dot_pi/Containerfile" "$HOME/dotfiles" || true
+    else
+        echo -e "\033[31m  pi-safe Containerfile not found, skipping.\033[0m"
+    fi
+
     echo -e "\n\033[34m=== Updating Homebrew and Packages ===\033[0m"
     if command -v brew >/dev/null; then
         sudo chown -R "$(whoami):wheel" /home/linuxbrew 2>/dev/null || true
