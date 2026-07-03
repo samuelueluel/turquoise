@@ -247,7 +247,8 @@ modules:
       packages:
         - brightnessctl # controls screen/keyboard backlight brightness
         - bluez # think already in base-main
-        # blueman + bluez-tools removed: noctalia-shell bluetooth panel covers pairing/connecting;
+        - blueman # GTK Bluetooth manager / pairing agent
+        # bluez-tools removed: noctalia-shell bluetooth panel covers pairing/connecting;
         # bluetoothctl (from bluez) covers CLI needs
         - upower # think already in base-main; battery/power state abstraction
         - power-profiles-daemon # switches CPU power profiles (balanced/performance/power-saver)
