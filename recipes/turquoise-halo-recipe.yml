@@ -42,6 +42,7 @@ modules:
   - type: script
     scripts:
       - build-isp4-akmod.sh
+      - build-mt7925-kmod.sh
 
   # ── sched-ext userspace schedulers (doc 7) ────────────────────────────────
   # scx_lavd / scx_rusty for smooth desktop under heavy Stata/LLM load on the
