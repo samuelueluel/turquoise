@@ -25,6 +25,11 @@ fi
 echo ">>> Cloning mt7925 repository..."
 git clone --depth 1 https://github.com/zbowling/mt7925.git "$WORK/mt7925"
 
+echo ">>> Patching for kernel 7.1+ API changes..."
+# In kernel 7.1+, the `u` union inside `ieee80211_mgmt->u.action` became anonymous
+find "$WORK/mt7925/dkms/src" -type f -name "*.c" -exec sed -i 's/mgmt->u\.action\.u\./mgmt->u.action./g' {} +
+
+
 echo ">>> Building mt7925 modules..."
 cd "$WORK/mt7925/dkms/src"
 make KDIR="/usr/src/kernels/${KVER}" all
