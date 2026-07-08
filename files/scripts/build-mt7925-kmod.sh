@@ -38,8 +38,9 @@ echo ">>> Installing mt7925 modules..."
 MODDIR="/usr/lib/modules/${KVER}/extra/mt7925"
 mkdir -p "$MODDIR"
 cp *.ko "$MODDIR/"
-# BlueBuild automatically runs depmod at the end of the build, which will
-# pick up these modules in extra/ and prefer them over the stock kernel/ drivers.
+
+echo ">>> Regenerating module dependencies for kernel ${KVER}..."
+depmod -a "${KVER}"
 
 echo ">>> Cleaning up build dependencies..."
 if [ "${#ADDED_PKGS[@]}" -gt 0 ]; then
