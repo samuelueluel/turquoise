@@ -162,6 +162,7 @@ modules:
         - gpu-screen-recorder # noctalia screen recording plugin
         - sdbus-cpp # D-Bus C++ library — noctalia runtime dep (was pulled in by COPR RPM)
         - jemalloc # memory allocator — noctalia links against this when present at build time
+        - md4c # markdown parser — noctalia runtime dep
         # dex: not in Fedora repos — XDG Autostart launcher, add via script if needed
 
   # ── Display manager ───────────────────────────────────────────────────────
@@ -463,7 +464,7 @@ modules:
   #   sdbus-cpp-devel, freetype-devel, fontconfig-devel, cairo-devel, pango-devel,
   #   librsvg2-devel, libxkbcommon-devel, polkit-devel, pipewire-devel, libcurl-devel,
   #   jemalloc-devel, mesa-libEGL-devel, mesa-libGLES-devel, libepoxy-devel,
-  #   libwebp-devel, pam-devel, wireplumber-devel   ← noctalia-shell
+  #   libwebp-devel, pam-devel, wireplumber-devel, md4c-devel   ← noctalia-shell
   - type: dnf
     install:
       install-weak-deps: false
@@ -506,6 +507,7 @@ modules:
         - pam-devel
         - libqalculate-devel
         - wireplumber-devel
+        - md4c-devel
 
   # ── Build noctalia-shell v5 from source ───────────────────────────────────
   # Replaces the lionheartp/Hyprland COPR RPM; installs to /usr/bin + /usr/share/noctalia/
@@ -704,6 +706,7 @@ modules:
         - pam-devel
         - libqalculate-devel
         - wireplumber-devel
+        - md4c-devel
 
   # ── Configure greetd + gtkgreet ───────────────────────────────────────────
   - type: script
