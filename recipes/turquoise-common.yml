@@ -464,7 +464,7 @@ modules:
   #   sdbus-cpp-devel, freetype-devel, fontconfig-devel, cairo-devel, pango-devel,
   #   librsvg2-devel, libxkbcommon-devel, polkit-devel, pipewire-devel, libcurl-devel,
   #   jemalloc-devel, mesa-libEGL-devel, mesa-libGLES-devel, libepoxy-devel,
-  #   libwebp-devel, pam-devel, wireplumber-devel, md4c-devel, json-devel   ← noctalia-shell
+  #   libwebp-devel, pam-devel, wireplumber-devel, md4c-devel, json-devel, tomlplusplus-devel   ← noctalia-shell
   - type: dnf
     install:
       install-weak-deps: false
@@ -509,6 +509,7 @@ modules:
         - wireplumber-devel
         - md4c-devel
         - json-devel
+        - tomlplusplus-devel
 
   # ── Build noctalia-shell v5 from source ───────────────────────────────────
   # Replaces the lionheartp/Hyprland COPR RPM; installs to /usr/bin + /usr/share/noctalia/
@@ -709,6 +710,7 @@ modules:
         - wireplumber-devel
         - md4c-devel
         - json-devel
+        - tomlplusplus-devel
 
   # ── Configure greetd + gtkgreet ───────────────────────────────────────────
   - type: script
