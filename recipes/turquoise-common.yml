@@ -163,6 +163,7 @@ modules:
         - sdbus-cpp # D-Bus C++ library — noctalia runtime dep (was pulled in by COPR RPM)
         - jemalloc # memory allocator — noctalia links against this when present at build time
         - md4c # markdown parser — noctalia runtime dep
+        - tomlplusplus # TOML parser — noctalia runtime dep
         # dex: not in Fedora repos — XDG Autostart launcher, add via script if needed
 
   # ── Display manager ───────────────────────────────────────────────────────
