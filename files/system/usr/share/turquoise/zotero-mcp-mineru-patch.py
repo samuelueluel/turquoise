@@ -30,12 +30,24 @@ errors: list[str] = []
 changed = False
 
 # --- 1. mineru.py ----------------------------------------------------------
-if not (pkg / "mineru.py").exists():
-    if src_mineru.exists():
-        shutil.copy2(src_mineru, pkg / "mineru.py")
+# This module is wholly owned by the patch, so synchronize it on every
+# application.  Checking only for existence left an older patched copy in
+# place after the MinerU 3.x update and prevented bug fixes from deploying.
+target_mineru = pkg / "mineru.py"
+if not src_mineru.exists():
+    errors.append("mineru.py source (zotero-mcp-mineru.py) not found next to this script")
+else:
+    try:
+        needs_copy = (
+            not target_mineru.exists()
+            or target_mineru.read_bytes() != src_mineru.read_bytes()
+        )
+    except OSError as e:
+        errors.append(f"could not compare mineru.py: {e}")
+        needs_copy = False
+    if needs_copy:
+        shutil.copy2(src_mineru, target_mineru)
         changed = True
-    else:
-        errors.append("mineru.py source (zotero-mcp-mineru.py) not found next to this script")
 
 
 def _apply(path: Path, edits: list[tuple[str, str]], name: str) -> None:
