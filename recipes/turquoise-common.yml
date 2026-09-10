@@ -170,7 +170,8 @@ modules:
         - jemalloc # memory allocator — noctalia links against this when present at build time
         - md4c # markdown parser — noctalia runtime dep
         - tomlplusplus # TOML parser — noctalia runtime dep
-        - libsecret # secret storage service — noctalia runtime dep
+        - libsecret # secret storage client library — noctalia runtime dep
+        - gnome-keyring # Secret Service daemon for app credential storage
         - libsodium # sodium crypto library — noctalia runtime dep
         - libjxl # JPEG XL library — noctalia runtime dep
         - libical # iCalendar library — noctalia runtime dep
