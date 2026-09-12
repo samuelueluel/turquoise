@@ -506,8 +506,27 @@ pi-safe full="false":
     podman rm "$UPGRADE_CTR" >/dev/null
     echo -e "\033[32mlocalhost/pi-safe:latest update complete.\033[0m"
 
+# Pull/recreate the standalone Peonist Halogen release image without touching
+# its model directory. The engine is closed-source and does not belong in the
+# Lemonade llama.cpp build/dispatch volume.
+halogen-flash-server force="false":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    IS_FORCE="false"
+    case "{{force}}" in
+        true|1|force|force=true|--force) IS_FORCE="true" ;;
+    esac
+
+    UPDATE_SCRIPT="{{HOME}}/turquoise/files/system/usr/share/turquoise/halogen-update.sh"
+    [[ -x "$UPDATE_SCRIPT" ]] || UPDATE_SCRIPT="{{SHARE}}/halogen-update.sh"
+    [[ -x "$UPDATE_SCRIPT" ]] || {
+        echo -e "\033[31mHalogen updater not found: $UPDATE_SCRIPT\033[0m"
+        exit 1
+    }
+    FORCE="$IS_FORCE" "$UPDATE_SCRIPT"
+
 # Check and compile bleeding-edge GPU LLM engines (Nathan, Laurent, Gaetan,
-# plus halo-box Vulkan and ROCm/HIP variants).
+# plus halo-box Vulkan and ROCm/HIP variants), then refresh standalone Halogen.
 llm-engines force="false":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -518,6 +537,7 @@ llm-engines force="false":
 
     if ! podman container exists lemonade; then
         echo -e "\033[33mLemonade container not found, skipping GPU engine update.\033[0m"
+        just --justfile "{{justfile()}}" halogen-flash-server "{{force}}"
         exit 0
     fi
     ENGINE_SCRIPT="{{HOME}}/turquoise/files/system/usr/share/turquoise/llm-ubuntu26-build-engines.sh"
@@ -590,6 +610,9 @@ llm-engines force="false":
         fi
         sleep 2
     done
+
+    echo -e "\n\033[34m=== Updating standalone Halogen Flash Server ===\033[0m"
+    just --justfile "{{justfile()}}" halogen-flash-server "$IS_FORCE"
 
 # Short singular alias for the engine refresh command.
 llm-engine force="false":
