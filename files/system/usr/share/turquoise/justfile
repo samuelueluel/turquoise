@@ -523,6 +523,50 @@ halogen-flash-server force="false":
         echo -e "\033[31mHalogen updater not found: $UPDATE_SCRIPT\033[0m"
         exit 1
     }
+
+    # Podman rejects --shm-size together with --ipc=host. Older Halogen
+    # containers can carry both settings, so normalize only the updater's
+    # create command without changing the updater or other Podman calls.
+    podman() {
+        if [[ "${1:-}" != create ]]; then
+            command podman "$@"
+            return $?
+        fi
+
+        local -a args=("$@") normalized=()
+        local has_host_ipc="false" i
+        for ((i = 1; i < ${#args[@]}; i++)); do
+            case "${args[i]}" in
+                --ipc)
+                    if ((i + 1 < ${#args[@]})) && [[ "${args[i + 1]}" == host ]]; then
+                        has_host_ipc="true"
+                    fi
+                    ;;
+                --ipc=host) has_host_ipc="true" ;;
+            esac
+        done
+
+        if [[ "$has_host_ipc" == true ]]; then
+            for ((i = 0; i < ${#args[@]}; i++)); do
+                case "${args[i]}" in
+                    --shm-size)
+                        if ((i + 1 < ${#args[@]})); then
+                            i=$((i + 1))
+                        else
+                            normalized+=("${args[i]}")
+                        fi
+                        ;;
+                    --shm-size=*) ;;
+                    *) normalized+=("${args[i]}") ;;
+                esac
+            done
+            args=("${normalized[@]}")
+            echo -e "\033[33m  Removing incompatible Halogen --shm-size with --ipc host.\033[0m"
+        fi
+
+        command podman "${args[@]}"
+    }
+    export -f podman
     FORCE="$IS_FORCE" "$UPDATE_SCRIPT"
 
 # Check and compile bleeding-edge GPU LLM engines (Nathan, Laurent, Gaetan,
@@ -687,38 +731,51 @@ update quick="false" force="false":
     fi
 
     if command -v turbovault >/dev/null; then
-        echo -e "\033[36m  Checking TurboVault updates...\033[0m"
-        latest_tag=$(curl -s --connect-timeout 5 https://api.github.com/repos/Epistates/turbovault/releases/latest | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' || true)
-        current_ver=$(turbovault --version 2>/dev/null | awk '{print $2}' || true)
-        if [[ -n "$latest_tag" && "v${current_ver}" != "$latest_tag" && "$current_ver" != "$latest_tag" ]]; then
-            echo -e "\033[33m  Rebuilding TurboVault (sql) from ${current_ver:-unknown} to ${latest_tag}...\033[0m"
-            SRC_TV="$HOME/.local/src/turbovault"
+        echo -e "\033[36m  Checking pinned Samuel TurboVault build...\033[0m"
+        TV_PIN="${TURBOVAULT_PIN:-samuel-v2.0.0.2}"
+        SRC_TV="$HOME/.local/src/turbovault"
+        PIN_FILE="$HOME/.local/state/turbovault/build-pin"
+        current_pin=$(cat "$PIN_FILE" 2>/dev/null | sed -n 's/^tag=//p' || true)
+        if [[ "$current_pin" != "$TV_PIN" ]]; then
             if [[ -d "$SRC_TV/.git" ]]; then
-                git -C "$SRC_TV" fetch --tags --quiet
-                if git -C "$SRC_TV" checkout --quiet "$latest_tag" 2>/dev/null; then
-                    if bash "$HOME/.local/bin/tv-fix-tool-schemas" "$SRC_TV"; then
+                git -C "$SRC_TV" fetch origin --tags --quiet || git -C "$SRC_TV" fetch upstream --tags --quiet || true
+                if git -C "$SRC_TV" rev-parse --verify --quiet "refs/tags/$TV_PIN" >/dev/null; then
+                    BUILD_TV=$(mktemp -d)
+                    cleanup_tv_build() {
+                        git -C "$SRC_TV" worktree remove --force "$BUILD_TV" >/dev/null 2>&1 || true
+                        rm -rf "$BUILD_TV"
+                    }
+                    trap cleanup_tv_build EXIT
+                    if git -C "$SRC_TV" worktree add --detach --quiet "$BUILD_TV" "$TV_PIN"; then
+                        echo -e "\033[33m  Rebuilding pinned TurboVault (sql) at ${TV_PIN}...\033[0m"
                         if podman run --rm \
-                            -v "$SRC_TV":/src:z \
+                            -v "$BUILD_TV":/src:z \
                             -v tv-cargo-cache:/usr/local/cargo \
                             -w /src \
                             rust:1.90-bookworm \
                             bash -c 'export DEBIAN_FRONTEND=noninteractive; apt-get update -qq >/dev/null 2>&1; apt-get install -y -qq cmake libssl-dev pkg-config build-essential >/dev/null 2>&1; cargo build --release --features sql'; then
-                            install -m755 "$SRC_TV/target/release/turbovault" "$HOME/.local/bin/turbovault"
-                            echo -e "\033[32m  Host turbovault rebuilt (sql) to ${latest_tag}.\033[0m"
+                            install -D -m755 "$BUILD_TV/target/release/turbovault" "$HOME/.local/bin/turbovault"
+                            mkdir -p "$(dirname "$PIN_FILE")"
+                            printf 'tag=%s\ncommit=%s\nsha256=%s\n' \
+                                "$TV_PIN" \
+                                "$(git -C "$BUILD_TV" rev-parse HEAD)" \
+                                "$(sha256sum "$HOME/.local/bin/turbovault" | awk '{print $1}')" \
+                                > "$PIN_FILE"
+                            echo -e "\033[32m  Host turbovault rebuilt from pinned fork tag ${TV_PIN}.\033[0m"
                         else
-                            echo -e "\033[31m  Build failed; keeping previous turbovault.\033[0m"
+                            echo -e "\033[31m  Pinned TurboVault build failed; keeping previous binary.\033[0m"
                         fi
                     else
-                        echo -e "\033[33m  Schema patch could not be applied; skipping rebuild to avoid shipping an unpatched binary.\033[0m"
+                        echo -e "\033[33m  Could not create worktree for ${TV_PIN}; skipping rebuild.\033[0m"
                     fi
                 else
-                    echo -e "\033[33m  Checkout of ${latest_tag} failed, skipping.\033[0m"
+                    echo -e "\033[33m  Pinned TurboVault tag ${TV_PIN} is unavailable; skipping rebuild.\033[0m"
                 fi
             else
-                echo -e "\033[33m  Skipping: no checkout at ~/.local/src/turbovault (clone: git clone https://github.com/Epistates/turbovault ~/.local/src/turbovault)\033[0m"
+                echo -e "\033[33m  Skipping: no checkout at ~/.local/src/turbovault.\033[0m"
             fi
         else
-            echo -e "  TurboVault is up to date (${current_ver:-1.6.0})."
+            echo -e "  TurboVault is pinned at ${TV_PIN}."
         fi
     fi
 
