@@ -6,11 +6,31 @@ set -Eeuo pipefail
 umask 077
 
 CONTAINER="${HALOGEN_CONTAINER:-halogen}"
-IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:0.5.9}"
+IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:0.6.3}"
 MODELS="${HALOGEN_MODELS:-$HOME/halogen-models}"
-CONFIG_VERSION="1"
+CONFIG_VERSION="6"
 FORCE="${FORCE:-false}"
-PIN_TRUNK="${HALOGEN_FLASH_PIN_TRUNK:-0}"
+# Upstream default is 1 and the docs call pinning "the setting to reach for if
+# you run other large workloads on the same machine"; 0 streams the 68 GiB
+# trunk from the page cache on every forward and costs several times decode
+# speed. The working 0.5.8 deployment held the weights resident.
+PIN_TRUNK="${HALOGEN_FLASH_PIN_TRUNK:-1}"
+# The per-forward arena is sized by HALOGEN_MAX_TOK while the image bakes
+# HALOGEN_PREFILL_CHUNK=32768 as the prefill call width. Any MAX_TOK override
+# without a matching PREFILL_CHUNK overflows the arena on Pi-sized prompts
+# ("internal sizing error in the per-forward arena", or a zero-token hang).
+# 32768 no longer fits this host's device budget on 0.5.9+; 16384 does only
+# with a smaller KV pool, so both are set together.
+# HALOGEN_PREFILL_CHUNK=32768 as the prefill call width. Any MAX_TOK override
+# without a matching PREFILL_CHUNK overflows the arena on Pi-sized prompts
+# ("internal sizing error in the per-forward arena", or a zero-token hang).
+# 32768 no longer fits this host's device budget on 0.5.9+; 16384 does only
+# with a smaller KV pool, so both are set together.
+MAX_TOK="${HALOGEN_MAX_TOK:-16384}"
+PREFILL_CHUNK="${HALOGEN_PREFILL_CHUNK:-16384}"
+KV_POOL_POSITIONS="${HALOGEN_KV_POOL_POSITIONS:-262144}"
+MAX_TOKENS_DEFAULT="${HALOGEN_MAX_TOKENS_DEFAULT:-8192}"
+MAX_TOKENS_CAP="${HALOGEN_MAX_TOKENS_CAP:-65536}"
 
 fail() {
   echo "halogen-update: $*" >&2
@@ -24,6 +44,28 @@ case "$FORCE" in
 esac
 [[ "$PIN_TRUNK" == 0 || "$PIN_TRUNK" == 1 ]] ||
   fail "HALOGEN_FLASH_PIN_TRUNK must be 0 or 1 (got: $PIN_TRUNK)"
+(( PIN_TRUNK == 1 )) ||
+  fail "HALOGEN_FLASH_PIN_TRUNK=0 is a documented last resort; set it explicitly if you truly want the unpinned trunk"
+[[ "$MAX_TOK" =~ ^[1-9][0-9]*$ ]] ||
+  fail "HALOGEN_MAX_TOK must be a positive integer (got: $MAX_TOK)"
+(( MAX_TOK <= 16384 )) ||
+  fail "HALOGEN_MAX_TOK must be <= 16384 (got: $MAX_TOK)"
+[[ "$PREFILL_CHUNK" =~ ^[1-9][0-9]*$ ]] ||
+  fail "HALOGEN_PREFILL_CHUNK must be a positive integer (got: $PREFILL_CHUNK)"
+(( PREFILL_CHUNK == MAX_TOK )) ||
+  fail "HALOGEN_PREFILL_CHUNK ($PREFILL_CHUNK) must equal HALOGEN_MAX_TOK ($MAX_TOK): the arena is sized by MAX_TOK while the prefill call width comes from PREFILL_CHUNK"
+[[ "$KV_POOL_POSITIONS" =~ ^[1-9][0-9]*$ ]] ||
+  fail "HALOGEN_KV_POOL_POSITIONS must be a positive integer (got: $KV_POOL_POSITIONS)"
+(( KV_POOL_POSITIONS >= 262144 )) ||
+  fail "HALOGEN_KV_POOL_POSITIONS must be >= 262144 (got: $KV_POOL_POSITIONS)"
+[[ "$MAX_TOKENS_DEFAULT" =~ ^[1-9][0-9]*$ ]] ||
+  fail "HALOGEN_MAX_TOKENS_DEFAULT must be a positive integer (got: $MAX_TOKENS_DEFAULT)"
+[[ "$MAX_TOKENS_CAP" =~ ^[1-9][0-9]*$ ]] ||
+  fail "HALOGEN_MAX_TOKENS_CAP must be a positive integer (got: $MAX_TOKENS_CAP)"
+(( MAX_TOKENS_DEFAULT <= MAX_TOKENS_CAP )) ||
+  fail "HALOGEN_MAX_TOKENS_DEFAULT must be <= HALOGEN_MAX_TOKENS_CAP"
+(( MAX_TOKENS_CAP <= 65536 )) ||
+  fail "HALOGEN_MAX_TOKENS_CAP must be <= 65536 (got: $MAX_TOKENS_CAP)"
 
 # sjust is a rootless host operation. Do not silently turn this into a
 # rootful deployment if somebody invokes the target through sudo.
@@ -300,6 +342,11 @@ create_args=(
   --name "$temp_container"
   --label "io.turquoise.halogen-config-version=$CONFIG_VERSION"
   --env "HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK"
+  --env "HALOGEN_MAX_TOK=$MAX_TOK"
+  --env "HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK"
+  --env "HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS"
+  --env "HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT"
+  --env "HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP"
   --volume "$MODELS:/models:ro"
   --publish "127.0.0.1:8731:8731"
 )
@@ -336,7 +383,7 @@ fi
 [[ -z "$ipc" ]] || create_args+=(--ipc "$ipc")
 if [[ "$old_exists" == true ]]; then
   restart_value="$restart_name"
-  [[ -n "$restart_value" ]] || restart_value="unless-stopped"
+  [[ -n "$restart_value" && "$restart_value" != "no" ]] || restart_value="unless-stopped"
 else
   restart_value="unless-stopped"
 fi
@@ -344,7 +391,9 @@ if [[ "$restart_value" == "on-failure" && "$restart_max" =~ ^[1-9][0-9]*$ ]]; th
   restart_value="$restart_value:$restart_max"
 fi
 create_args+=(--restart "$restart_value")
-if [[ "$shm_size" =~ ^[1-9][0-9]*$ ]]; then
+# Podman rejects an explicit shared-memory size with host IPC; host IPC
+# already supplies the relevant namespace, so do not carry the stale value.
+if [[ "$ipc" != "host" && "$shm_size" =~ ^[1-9][0-9]*$ ]]; then
   create_args+=(--shm-size "$shm_size")
 fi
 
@@ -387,7 +436,7 @@ for value in "${secrets[@]}"; do create_args+=(--secret "$value"); done
 # Create before removing the old container so image/config validation happens
 # before any service downtime. No automatic retry changes Halogen's performance
 # settings if startup later fails.
-echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK)"
+echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
 podman create "${create_args[@]}" "$IMAGE" all >/dev/null
 if [[ "$old_exists" == true ]]; then
   case "$old_state" in
