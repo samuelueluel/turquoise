@@ -12,7 +12,8 @@ IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:0.7.0}"
 MODELS="${HALOGEN_MODELS:-$HOME/.local/share/containers/storage/volumes/lemonade26-v108-cache/_data/qwen3.8-flash-next}"
 CHECKPOINT="${HALOGEN_CHECKPOINT:-/models/UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf}"
 MTP_HEAD="${HALOGEN_MTP_HEAD:-/models/qwen38-flash-next-mtp.hgn}"
-CONFIG_VERSION="7"
+TOKENIZER="${HALOGEN_TOKENIZER:-/models/tokenizer}"
+CONFIG_VERSION="8"
 FORCE="${FORCE:-false}"
 # Upstream default is 1 and the docs call pinning "the setting to reach for if
 # you run other large workloads on the same machine"; 0 streams the 68 GiB
@@ -81,14 +82,17 @@ command -v podman >/dev/null 2>&1 || fail "podman not found"
   fail "HALOGEN_CHECKPOINT must be a path under /models (got: $CHECKPOINT)"
 [[ "$MTP_HEAD" == /models/* ]] ||
   fail "HALOGEN_MTP_HEAD must be a path under /models (got: $MTP_HEAD)"
+[[ "$TOKENIZER" == /models/* ]] ||
+  fail "HALOGEN_TOKENIZER must be a path under /models (got: $TOKENIZER)"
 CHECKPOINT_HOST="$MODELS/${CHECKPOINT#/models/}"
 MTP_HEAD_HOST="$MODELS/${MTP_HEAD#/models/}"
+TOKENIZER_HOST="$MODELS/${TOKENIZER#/models/}"
 [[ -f "$CHECKPOINT_HOST" ]] ||
   fail "GGUF checkpoint not found: $CHECKPOINT_HOST"
 [[ -f "$MTP_HEAD_HOST" ]] ||
   fail "Halogen MTP head not found: $MTP_HEAD_HOST"
-[[ -d "$MODELS/tokenizer" ]] ||
-  fail "Halogen tokenizer directory not found: $MODELS/tokenizer"
+[[ -f "$TOKENIZER_HOST/tokenizer.json" ]] ||
+  fail "Halogen tokenizer.json not found: $TOKENIZER_HOST/tokenizer.json"
 
 old_inspect=""
 metadata=""
@@ -366,6 +370,7 @@ create_args=(
   --env "HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP"
   --env "HALOGEN_CHECKPOINT=$CHECKPOINT"
   --env "HALOGEN_MTP_HEAD=$MTP_HEAD"
+  --env "HALOGEN_TOKENIZER=$TOKENIZER"
   --volume "$MODELS:/models:ro"
   --publish "127.0.0.1:8731:8731"
 )
@@ -455,7 +460,7 @@ for value in "${secrets[@]}"; do create_args+=(--secret "$value"); done
 # Create before removing the old container so image/config validation happens
 # before any service downtime. No automatic retry changes Halogen's performance
 # settings if startup later fails.
-echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_CHECKPOINT=$CHECKPOINT, HALOGEN_MTP_HEAD=$MTP_HEAD, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
+echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_CHECKPOINT=$CHECKPOINT, HALOGEN_MTP_HEAD=$MTP_HEAD, HALOGEN_TOKENIZER=$TOKENIZER, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
 podman create "${create_args[@]}" "$IMAGE" all >/dev/null
 if [[ "$old_exists" == true ]]; then
   case "$old_state" in

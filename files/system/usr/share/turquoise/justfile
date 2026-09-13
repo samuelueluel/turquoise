@@ -656,11 +656,7 @@ llm-engines force="false":
     echo -e "\n\033[34m=== Updating standalone Halogen Flash Server ===\033[0m"
     just --justfile "{{justfile()}}" halogen-flash-server "$IS_FORCE"
 
-# Refresh only the standalone Halogen service, including its pinned release image.
-halogen force="false":
-    just --justfile "{{justfile()}}" halogen-flash-server "{{force}}"
-
-# Short singular alias for the full engine refresh command.
+# Short singular alias for the engine refresh command.
 llm-engine force="false":
     just --justfile "{{justfile()}}" llm-engines "{{force}}"
 
