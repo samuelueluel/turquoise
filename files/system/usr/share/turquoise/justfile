@@ -506,9 +506,7 @@ pi-safe full="false":
     podman rm "$UPGRADE_CTR" >/dev/null
     echo -e "\033[32mlocalhost/pi-safe:latest update complete.\033[0m"
 
-# Pull/recreate the standalone Peonist Halogen release image without touching
-# its model directory. The engine is closed-source and does not belong in the
-# Lemonade llama.cpp build/dispatch volume.
+# Refresh standalone Peonist Halogen release container, including BYO GGUF.
 halogen-flash-server force="false":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -658,7 +656,11 @@ llm-engines force="false":
     echo -e "\n\033[34m=== Updating standalone Halogen Flash Server ===\033[0m"
     just --justfile "{{justfile()}}" halogen-flash-server "$IS_FORCE"
 
-# Short singular alias for the engine refresh command.
+# Refresh only the standalone Halogen service, including its pinned release image.
+halogen force="false":
+    just --justfile "{{justfile()}}" halogen-flash-server "{{force}}"
+
+# Short singular alias for the full engine refresh command.
 llm-engine force="false":
     just --justfile "{{justfile()}}" llm-engines "{{force}}"
 
