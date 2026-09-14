@@ -13,7 +13,18 @@ MODELS="${HALOGEN_MODELS:-$HOME/.local/share/containers/storage/volumes/lemonade
 CHECKPOINT="${HALOGEN_CHECKPOINT:-/models/UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf}"
 MTP_HEAD="${HALOGEN_MTP_HEAD:-/models/qwen38-flash-next-mtp.hgn}"
 TOKENIZER="${HALOGEN_TOKENIZER:-/models/tokenizer}"
-CONFIG_VERSION="8"
+# Mirror the live Lemonade extra.UD-Q4_K_XL sampling/reasoning profile while
+# retaining Halogen's MTP drafter. Values sent by an API request still take
+# precedence over these server-side defaults.
+TEMPERATURE="${HALOGEN_TEMPERATURE:-1.0}"
+TOP_P="${HALOGEN_TOP_P:-0.95}"
+TOP_K="${HALOGEN_TOP_K:-20}"
+MIN_P="${HALOGEN_MIN_P:-0.0}"
+PRESENCE_PENALTY="${HALOGEN_PRESENCE_PENALTY:-0.0}"
+ENABLE_THINKING="${HALOGEN_ENABLE_THINKING:-1}"
+REASONING_EFFORT="${HALOGEN_REASONING_EFFORT:-xhigh}"
+DRAFTER_DEFAULT="${HALOGEN_DRAFTER_DEFAULT:-1}"
+CONFIG_VERSION="10"
 FORCE="${FORCE:-false}"
 # Upstream default is 1 and the docs call pinning "the setting to reach for if
 # you run other large workloads on the same machine"; 0 streams the 68 GiB
@@ -371,6 +382,14 @@ create_args=(
   --env "HALOGEN_CHECKPOINT=$CHECKPOINT"
   --env "HALOGEN_MTP_HEAD=$MTP_HEAD"
   --env "HALOGEN_TOKENIZER=$TOKENIZER"
+  --env "HALOGEN_TEMPERATURE=$TEMPERATURE"
+  --env "HALOGEN_TOP_P=$TOP_P"
+  --env "HALOGEN_TOP_K=$TOP_K"
+  --env "HALOGEN_MIN_P=$MIN_P"
+  --env "HALOGEN_PRESENCE_PENALTY=$PRESENCE_PENALTY"
+  --env "HALOGEN_ENABLE_THINKING=$ENABLE_THINKING"
+  --env "HALOGEN_REASONING_EFFORT=$REASONING_EFFORT"
+  --env "HALOGEN_DRAFTER_DEFAULT=$DRAFTER_DEFAULT"
   --volume "$MODELS:/models:ro"
   --publish "127.0.0.1:8731:8731"
 )
@@ -460,7 +479,7 @@ for value in "${secrets[@]}"; do create_args+=(--secret "$value"); done
 # Create before removing the old container so image/config validation happens
 # before any service downtime. No automatic retry changes Halogen's performance
 # settings if startup later fails.
-echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_CHECKPOINT=$CHECKPOINT, HALOGEN_MTP_HEAD=$MTP_HEAD, HALOGEN_TOKENIZER=$TOKENIZER, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
+echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_CHECKPOINT=$CHECKPOINT, HALOGEN_MTP_HEAD=$MTP_HEAD, HALOGEN_TOKENIZER=$TOKENIZER, HALOGEN_TEMPERATURE=$TEMPERATURE, HALOGEN_TOP_P=$TOP_P, HALOGEN_TOP_K=$TOP_K, HALOGEN_MIN_P=$MIN_P, HALOGEN_PRESENCE_PENALTY=$PRESENCE_PENALTY, HALOGEN_ENABLE_THINKING=$ENABLE_THINKING, HALOGEN_REASONING_EFFORT=$REASONING_EFFORT, HALOGEN_DRAFTER_DEFAULT=$DRAFTER_DEFAULT, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
 podman create "${create_args[@]}" "$IMAGE" all >/dev/null
 if [[ "$old_exists" == true ]]; then
   case "$old_state" in
