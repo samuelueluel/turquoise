@@ -1,0 +1,3 @@
+# Disable USB autosuspend for MediaTek MT7925 Bluetooth (0e8d:8c38) on the ZBook Ultra G1a
+# Prevents WMT command initialization timeouts (-110) and firmware sleep deadlocks
+ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="0e8d", ATTR{idProduct}=="8c38", ATTR{power/control}="on"

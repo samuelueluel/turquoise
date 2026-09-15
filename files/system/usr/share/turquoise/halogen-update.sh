@@ -223,7 +223,14 @@ def unique(values):
 devices = [device_option(value) for value in list_or_empty(host.get("Devices"))]
 devices = unique(devices)
 
-ulimits = [ulimit_option(value) for value in list_or_empty(host.get("Ulimits"))]
+# RLIMIT_NPROC is specific to the invoking host/user namespace. Replaying
+# an old value can make rootless crun reject the container at startup when the
+# host limit changes, so let Podman inherit the current limit instead.
+ulimits = [
+    value for value in
+    (ulimit_option(value) for value in list_or_empty(host.get("Ulimits")))
+    if value and not value.startswith("nproc=")
+]
 ulimits = unique(ulimits)
 
 secrets = []
