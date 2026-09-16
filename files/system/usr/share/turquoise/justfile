@@ -209,19 +209,29 @@ pipx:
 
 # Declaratively install/upgrade Python-based CLI and MCP tools from ~/.Uvfile
 # Uvfile format: shell-evaluated `uv tool install` arguments; quote requirements
-# containing spaces (for example, a PEP 508 direct Git reference).
+# containing spaces (for example, a PEP 508 direct Git reference). Every entry is
+# attempted; any failed install is reported and fails the recipe with exit 1.
 uv:
     #!/usr/bin/env bash
     set -euo pipefail
     UV_FILE="{{HOME}}/.Uvfile"
     [[ -f "$UV_FILE" ]] || { echo "~/.Uvfile not found, skipping."; exit 0; }
     echo "Syncing uv tools from $UV_FILE..."
+    failures=()
     while IFS= read -r line || [[ -n "$line" ]]; do
         entry=$(echo "$line" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*#.*//' -e 's/[[:space:]]*$//')
         [[ -z "$entry" ]] && continue
         echo "  Installing/Upgrading: $entry..."
-        eval "uv tool install $entry --upgrade 2>/dev/null || true"
+        if ! eval "uv tool install $entry --upgrade"; then
+            echo "  FAILED: $entry" >&2
+            failures+=("$entry")
+        fi
     done < "$UV_FILE"
+    if ((${#failures[@]})); then
+        echo "uv sync finished with ${#failures[@]} failure(s):" >&2
+        printf '  - %s\n' "${failures[@]}" >&2
+        exit 1
+    fi
 
 # Blanket-upgrade npm global packages (no pins — always latest).
 # Mirrors the brew pattern (brew update && brew upgrade). The npm set is small
