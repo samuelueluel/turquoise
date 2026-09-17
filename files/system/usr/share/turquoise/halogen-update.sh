@@ -6,13 +6,20 @@ set -Eeuo pipefail
 umask 077
 
 CONTAINER="${HALOGEN_CONTAINER:-halogen}"
-# 0.7.0 is the first release with lossless llama.cpp GGUF input.
-IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:0.7.0}"
+# 0.7.0 is the first release with lossless llama.cpp GGUF input; 0.11.x adds
+# the thinking answer-room and Pi's thinking-budget field names.
+IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:0.11.4}"
 # Reuse the existing Qwen3.8-Flash-Next GGUF cache maintained by Lemonade.
 MODELS="${HALOGEN_MODELS:-$HOME/.local/share/containers/storage/volumes/lemonade26-v108-cache/_data/qwen3.8-flash-next}"
 CHECKPOINT="${HALOGEN_CHECKPOINT:-/models/UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf}"
 MTP_HEAD="${HALOGEN_MTP_HEAD:-/models/qwen38-flash-next-mtp.hgn}"
 TOKENIZER="${HALOGEN_TOKENIZER:-/models/tokenizer}"
+# Peonist vision sidecar (.hgn format). Its llama.cpp mmproj equivalents are
+# not readable by this engine. Unset HALOGEN_VISION_TOWER to serve text-only.
+# No-colon expansion: an explicitly EMPTY HALOGEN_VISION_TOWER must select
+# text-only, while a truly unset variable falls back to the tower default.
+# ${x:-y} would treat empty as unset and silently load vision.
+VISION_TOWER="${HALOGEN_VISION_TOWER-/models/qwen38-flash-next-vision.hgn}"
 # Mirror the live Lemonade extra.UD-Q4_K_XL sampling/reasoning profile while
 # retaining Halogen's MTP drafter. Values sent by an API request still take
 # precedence over these server-side defaults.
@@ -24,7 +31,11 @@ PRESENCE_PENALTY="${HALOGEN_PRESENCE_PENALTY:-0.0}"
 ENABLE_THINKING="${HALOGEN_ENABLE_THINKING:-1}"
 REASONING_EFFORT="${HALOGEN_REASONING_EFFORT:-xhigh}"
 DRAFTER_DEFAULT="${HALOGEN_DRAFTER_DEFAULT:-1}"
-CONFIG_VERSION="10"
+CONFIG_VERSION="11"
+# The vision mode is part of the container contract. Encode it in the config
+# label so a mode switch recreates the container instead of early-exit
+# matching a deployment created with the other mode.
+CONFIG_VERSION="${CONFIG_VERSION}-$( [[ -n "$VISION_TOWER" ]] && echo vision || echo text )"
 FORCE="${FORCE:-false}"
 # Upstream default is 1 and the docs call pinning "the setting to reach for if
 # you run other large workloads on the same machine"; 0 streams the 68 GiB
@@ -93,15 +104,21 @@ command -v podman >/dev/null 2>&1 || fail "podman not found"
   fail "HALOGEN_CHECKPOINT must be a path under /models (got: $CHECKPOINT)"
 [[ "$MTP_HEAD" == /models/* ]] ||
   fail "HALOGEN_MTP_HEAD must be a path under /models (got: $MTP_HEAD)"
+[[ -z "$VISION_TOWER" || "$VISION_TOWER" == /models/* ]] ||
+  fail "HALOGEN_VISION_TOWER must be empty or a path under /models (got: $VISION_TOWER)"
 [[ "$TOKENIZER" == /models/* ]] ||
   fail "HALOGEN_TOKENIZER must be a path under /models (got: $TOKENIZER)"
 CHECKPOINT_HOST="$MODELS/${CHECKPOINT#/models/}"
 MTP_HEAD_HOST="$MODELS/${MTP_HEAD#/models/}"
 TOKENIZER_HOST="$MODELS/${TOKENIZER#/models/}"
+VISION_TOWER_HOST=""
+[[ -z "$VISION_TOWER" ]] || VISION_TOWER_HOST="$MODELS/${VISION_TOWER#/models/}"
 [[ -f "$CHECKPOINT_HOST" ]] ||
   fail "GGUF checkpoint not found: $CHECKPOINT_HOST"
 [[ -f "$MTP_HEAD_HOST" ]] ||
   fail "Halogen MTP head not found: $MTP_HEAD_HOST"
+[[ -z "$VISION_TOWER_HOST" ]] || [[ -f "$VISION_TOWER_HOST" ]] ||
+  fail "Halogen vision tower not found: $VISION_TOWER_HOST"
 [[ -f "$TOKENIZER_HOST/tokenizer.json" ]] ||
   fail "Halogen tokenizer.json not found: $TOKENIZER_HOST/tokenizer.json"
 
@@ -400,6 +417,9 @@ create_args=(
   --volume "$MODELS:/models:ro"
   --publish "127.0.0.1:8731:8731"
 )
+# Absent rather than empty: an empty HALOGEN_VISION_TOWER is not documented
+# as equivalent to unset, so the text-only opt-out must omit the flag.
+[[ -z "$VISION_TOWER" ]] || create_args+=(--env "HALOGEN_VISION_TOWER=$VISION_TOWER")
 
 if [[ "$old_exists" == true ]]; then
   if ((${#old_devices[@]})); then
@@ -486,7 +506,7 @@ for value in "${secrets[@]}"; do create_args+=(--secret "$value"); done
 # Create before removing the old container so image/config validation happens
 # before any service downtime. No automatic retry changes Halogen's performance
 # settings if startup later fails.
-echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_CHECKPOINT=$CHECKPOINT, HALOGEN_MTP_HEAD=$MTP_HEAD, HALOGEN_TOKENIZER=$TOKENIZER, HALOGEN_TEMPERATURE=$TEMPERATURE, HALOGEN_TOP_P=$TOP_P, HALOGEN_TOP_K=$TOP_K, HALOGEN_MIN_P=$MIN_P, HALOGEN_PRESENCE_PENALTY=$PRESENCE_PENALTY, HALOGEN_ENABLE_THINKING=$ENABLE_THINKING, HALOGEN_REASONING_EFFORT=$REASONING_EFFORT, HALOGEN_DRAFTER_DEFAULT=$DRAFTER_DEFAULT, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
+echo "halogen-update: recreating $CONTAINER from $IMAGE (config $CONFIG_VERSION, HALOGEN_CHECKPOINT=$CHECKPOINT, HALOGEN_MTP_HEAD=$MTP_HEAD, HALOGEN_TOKENIZER=$TOKENIZER, HALOGEN_VISION_TOWER=$VISION_TOWER, HALOGEN_TEMPERATURE=$TEMPERATURE, HALOGEN_TOP_P=$TOP_P, HALOGEN_TOP_K=$TOP_K, HALOGEN_MIN_P=$MIN_P, HALOGEN_PRESENCE_PENALTY=$PRESENCE_PENALTY, HALOGEN_ENABLE_THINKING=$ENABLE_THINKING, HALOGEN_REASONING_EFFORT=$REASONING_EFFORT, HALOGEN_DRAFTER_DEFAULT=$DRAFTER_DEFAULT, HALOGEN_FLASH_PIN_TRUNK=$PIN_TRUNK, HALOGEN_MAX_TOK=$MAX_TOK, HALOGEN_PREFILL_CHUNK=$PREFILL_CHUNK, HALOGEN_KV_POOL_POSITIONS=$KV_POOL_POSITIONS, HALOGEN_MAX_TOKENS_DEFAULT=$MAX_TOKENS_DEFAULT, HALOGEN_MAX_TOKENS_CAP=$MAX_TOKENS_CAP)"
 podman create "${create_args[@]}" "$IMAGE" all >/dev/null
 if [[ "$old_exists" == true ]]; then
   case "$old_state" in

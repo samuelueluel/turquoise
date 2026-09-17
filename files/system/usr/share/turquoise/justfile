@@ -516,6 +516,20 @@ pi-safe full="false":
     podman rm "$UPGRADE_CTR" >/dev/null
     echo -e "\033[32mlocalhost/pi-safe:latest update complete.\033[0m"
 
+# Choose the standalone Halogen vision mode with gum, then apply it via the
+# halogen-update.sh script. Available before the next image build as:
+#   ~/turquoise/files/system/usr/share/turquoise/halogen-menu.sh
+halogen-menu:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    MENU_SCRIPT="{{HOME}}/turquoise/files/system/usr/share/turquoise/halogen-menu.sh"
+    [[ -x "$MENU_SCRIPT" ]] || MENU_SCRIPT="{{SHARE}}/halogen-menu.sh"
+    [[ -x "$MENU_SCRIPT" ]] || {
+        echo -e "\033[31mHalogen menu not found: $MENU_SCRIPT\033[0m"
+        exit 1
+    }
+    exec "$MENU_SCRIPT"
+
 # Refresh standalone Peonist Halogen release container, including BYO GGUF.
 halogen-flash-server force="false":
     #!/usr/bin/env bash

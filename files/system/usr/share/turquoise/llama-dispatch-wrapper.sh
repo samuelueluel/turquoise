@@ -96,9 +96,10 @@ elif [[ -n "$LEGACY_ENGINE" ]]; then
   ENGINE="$LEGACY_ENGINE"
 fi
 
-# Nathan's Flash recipe still contributes --tensor-read-lazy auto. The
-# halo-box fork uses --ngram-on-disk for the Qwen3.8 Flash PLE and does not
-# expose tensor-read-lazy, so remove that Nathan-only pair for Halo runs.
+# Nathan's Flash recipe contributes --tensor-read-lazy auto and --no-mmap.
+# The halo-box fork uses --ngram-on-disk for the Qwen3.8 Flash PLE and uses
+# --load-mode mmap instead of --no-mmap, so remove those Nathan-only options
+# for Halo runs.
 if [[ "$ENGINE" == halo-vulkan || "$ENGINE" == halo-rocm ]]; then
   HALO_CLEAN_CMD=()
   skip_next=0
@@ -113,12 +114,42 @@ if [[ "$ENGINE" == halo-vulkan || "$ENGINE" == halo-rocm ]]; then
         ;;
       --tensor-read-lazy=*)
         ;;
+      --no-mmap|--no-mmap=*)
+        ;;
       *)
         HALO_CLEAN_CMD+=("$arg")
         ;;
     esac
   done
   CLEAN_CMD=("${HALO_CLEAN_CMD[@]}")
+fi
+
+# Lemonade merges the stored extra-model recipe (canonical-Vulkan flags)
+# with per-load overrides, so --load-mode mmap, --no-host, and --no-repack
+# can still arrive on halo-rocm runs even though lem-load-model omits them
+# there: --load-mode mmap wedges the HIP loader (thread spin, no readiness)
+# and --no-host/--no-repack break its buffer setup. The fork default
+# (load-mode auto) is the working read path. halo-vulkan keeps these flags.
+if [[ "$ENGINE" == halo-rocm ]]; then
+  ROCM_CLEAN_CMD=()
+  skip_next=0
+  for arg in "${CLEAN_CMD[@]}"; do
+    if (( skip_next )); then
+      skip_next=0
+      continue
+    fi
+    case "$arg" in
+      --load-mode)
+        skip_next=1
+        ;;
+      --load-mode=*|--no-host|--no-repack)
+        ;;
+      *)
+        ROCM_CLEAN_CMD+=("$arg")
+        ;;
+    esac
+  done
+  CLEAN_CMD=("${ROCM_CLEAN_CMD[@]}")
 fi
 
 for assignment in "${HALO_ENV[@]}"; do
