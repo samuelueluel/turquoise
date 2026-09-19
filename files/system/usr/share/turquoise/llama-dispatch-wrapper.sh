@@ -15,7 +15,6 @@ HALO_ROCM_REQUESTED=0
 LEGACY_ENGINE=""
 LEGACY_NONDEFAULT=0
 LEGACY_ROCM_REQUESTED=0
-LEGACY_LAURENT_REQUESTED=0
 
 die() {
   echo "llama-dispatch-wrapper: $*" >&2
@@ -64,11 +63,6 @@ while (($#)); do
       LEGACY_NONDEFAULT=1
       LEGACY_ROCM_REQUESTED=1
       ;;
-    --force-laurent)
-      LEGACY_ENGINE="laurent"
-      LEGACY_NONDEFAULT=1
-      LEGACY_LAURENT_REQUESTED=1
-      ;;
     --force-vulkan)
       # Canonical Nathan is the default; do not let it overwrite an explicit
       # non-default request when Lemonade reorders normalized arguments.
@@ -78,10 +72,6 @@ while (($#)); do
       ;;
   esac
 done
-
-if (( LEGACY_ROCM_REQUESTED && LEGACY_LAURENT_REQUESTED )); then
-  die "conflicting legacy backend flags: --force-rocm and --force-laurent"
-fi
 if (( HALO_VULKAN_REQUESTED && HALO_ROCM_REQUESTED )); then
   die "conflicting Halo backend flags: --force-halo-vulkan and --force-halo-rocm"
 fi
@@ -174,7 +164,7 @@ case "$ENGINE" in
     ;;
   halo-vulkan)
     # halo-box Vulkan/RADV engine. The portable ICD is staged next to the
-    # binary, just as for the existing Nathan and Laurent Vulkan engines.
+    # binary, just as for the existing Nathan Vulkan engine.
     export VK_ICD_FILENAMES="/opt/lemonade/llama/halo-vulkan/driver/radeon_icd.x86_64.json"
     export VK_DRIVER_FILES="$VK_ICD_FILENAMES"
     export LD_LIBRARY_PATH="/opt/lemonade/llama/halo-vulkan/bin:/opt/lemonade/llama/halo-vulkan/driver${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
@@ -190,14 +180,6 @@ case "$ENGINE" in
       export LD_LIBRARY_PATH="/opt/lemonade/llama/rocm/lib:/opt/lemonade/llama/rocm:/opt/rocm/lib:/opt/rocm/lib/llvm/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
       exec /opt/lemonade/llama/rocm/llama-server "${CLEAN_CMD[@]}"
     fi
-    ;;
-  laurent)
-    # Existing Laurent Zuijdwijk Vulkan RADV engine (Adaptive DFlash2 + ROCmFP4).
-    export VK_ICD_FILENAMES="/opt/lemonade/llama/vulkan-laurent/driver/radeon_icd.x86_64.json"
-    export VK_DRIVER_FILES="$VK_ICD_FILENAMES"
-    export LD_LIBRARY_PATH="/opt/lemonade/llama/vulkan-laurent/bin:/opt/lemonade/llama/vulkan-laurent/driver${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-    export GGML_VK_MMID_ROWLISTS=1 GGML_VK_MMID_SMALLN=1 GGML_VK_MMID_BM64=1 GGML_VK_MMID_WAVE32=1 GGML_VK_MMID_F16B=1 GGML_VK_MMID_M128=1 GGML_VK_FA_WAVE32=1 GGML_VK_FA_DEQUANT=1 GGML_VK_MAX_NODES_PER_SUBMIT=64
-    exec /opt/lemonade/llama/vulkan-laurent/bin/llama-server "${CLEAN_CMD[@]}"
     ;;
   nathan)
     # Existing Nathanw1014 Vulkan RADV engine (strix-halo-vulkan).

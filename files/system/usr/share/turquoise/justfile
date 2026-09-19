@@ -606,7 +606,7 @@ halogen-sidecar:
     }
     exec "$SIDECAR_SCRIPT"
 
-# Check and compile bleeding-edge GPU LLM engines (Nathan, Laurent, Gaetan,
+# Check and compile bleeding-edge GPU LLM engines (Nathan, Gaetan,
 # plus halo-box Vulkan and ROCm/HIP variants), then refresh standalone Halogen.
 llm-engines force="false":
     #!/usr/bin/env bash
@@ -647,7 +647,7 @@ llm-engines force="false":
     WRAPPER_SRC="{{HOME}}/turquoise/files/system/usr/share/turquoise/llama-dispatch-wrapper.sh"
     [[ -f "$WRAPPER_SRC" ]] || WRAPPER_SRC="{{SHARE}}/llama-dispatch-wrapper.sh"
     if [[ -f "$WRAPPER_SRC" ]]; then
-        echo -e "\033[36mSynchronizing and validating the five-engine dispatch wrapper...\033[0m"
+        echo -e "\033[36mSynchronizing and validating the four-engine dispatch wrapper...\033[0m"
         podman cp "$WRAPPER_SRC" lemonade:/opt/lemonade/llama/llama-server
         podman cp "$WRAPPER_SRC" lemonade:/opt/lemonade/llama/vulkan/bin/llama-server
         podman cp "$WRAPPER_SRC" lemonade:/root/.cache/lemonade/bin/llamacpp/vulkan/llama-server
@@ -659,7 +659,6 @@ llm-engines force="false":
             for f in /opt/lemonade/llama/llama-server /opt/lemonade/llama/vulkan/bin/llama-server /root/.cache/lemonade/bin/llamacpp/vulkan/llama-server; do
                 test -x "$f"
                 grep -q -- force-rocm "$f"
-                grep -q -- force-laurent "$f"
                 grep -q -- force-halo-vulkan "$f"
                 grep -q -- force-halo-rocm "$f"
             done

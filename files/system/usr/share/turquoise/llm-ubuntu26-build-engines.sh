@@ -23,7 +23,7 @@ esac
 DRIVER_URL="${DRIVER_URL:-https://github.com/Nathanw1014/strix-halo-llamacpp/releases/download/v0.7.3/strix-halo-llamacpp-vulkan-portable.tar.gz}"
 
 # The engine builders are disposable. Keep the rolling-stable Shaderc toolchain in a
-# separate persistent volume so Nathan and Laurent share one compiler without coupling
+# separate persistent volume so Vulkan targets share one compiler without coupling
 # the build to the host's Homebrew installation.
 SHADERC_REPO="${SHADERC_REPO:-https://github.com/google/shaderc.git}"
 TOOLCHAIN_VOLUME="${TOOLCHAIN_VOLUME:-lemonade26-toolchain}"
@@ -126,7 +126,7 @@ ensure_shaderc() {
 '
 }
 
-if [[ "$TOOLCHAIN_ONLY" == "true" || "$ONLY" == all || "$ONLY" == nathan || "$ONLY" == laurent || "$ONLY" == halo || "$ONLY" == halo-vulkan ]]; then
+if [[ "$TOOLCHAIN_ONLY" == "true" || "$ONLY" == all || "$ONLY" == nathan || "$ONLY" == halo || "$ONLY" == halo-vulkan ]]; then
   SHADERC_TAG=$(latest_shaderc_tag)
   ensure_shaderc
 fi
@@ -322,69 +322,6 @@ run_builder nathan '
   } > /out/vulkan26.new/BUILD-INFO
   rm -rf /out/vulkan
   mv /out/vulkan26.new /out/vulkan
-'
-fi
-fi
-
-if [[ "$ONLY" == all || "$ONLY" == laurent ]]; then
-if should_build laurent "https://github.com/LaurentZuijdwijk/llama.cpp.git" "refs/heads/vulkan/qwen4exp-rocmfpx" "vulkan-laurent" "$SHADERC_TAG" "$IMAGE_ID"; then
-run_builder laurent '
-  export DEBIAN_FRONTEND=noninteractive
-  export CC=gcc CXX=g++
-  apt-get update -qq
-  apt-get install -y -qq git cmake build-essential curl libvulkan-dev glslang-tools spirv-headers spirv-tools libssl-dev
-  GLSLC=/toolchain/shaderc/current/glslc
-  test -x "$GLSLC"
-  CPU_TARGET=$(gcc -Q --help=target -march=native 2>/dev/null | awk '\''$1 == "-march=" { print $2; exit }'\'')
-  echo "OS: $(. /etc/os-release; printf "%s %s" "$PRETTY_NAME" "$VERSION_ID")"
-  echo "glibc: $(ldd --version | head -1)"
-  echo "gcc: $(gcc --version | head -1)"
-  echo "cmake: $(cmake --version | head -1)"
-  echo "glslc: $("$GLSLC" --version 2>&1 | head -1)"
-
-  rm -rf /tmp/vulkan-portable /tmp/laurent-src /out/vulkan-laurent26.new
-  mkdir -p /tmp/vulkan-portable /out/vulkan-laurent26.new/driver /out/vulkan-laurent26.new/bin
-  curl --fail --location --retry 3 --silent --show-error \
-    -o /tmp/vulkan-portable.tar.gz "'"$DRIVER_URL"'"
-  tar xzf /tmp/vulkan-portable.tar.gz -C /tmp/vulkan-portable --strip-components=1
-  test -f /tmp/vulkan-portable/driver/radeon_icd.x86_64.json
-  cp -a /tmp/vulkan-portable/driver/. /out/vulkan-laurent26.new/driver/
-
-  LAURENT_BRANCH="vulkan/qwen4exp-rocmfpx"
-  rm -rf /tmp/laurent-src
-  git clone --branch "$LAURENT_BRANCH" --single-branch --depth=1 https://github.com/LaurentZuijdwijk/llama.cpp.git /tmp/laurent-src
-  cd /tmp/laurent-src
-  LAURENT_COMMIT=$(git rev-parse HEAD)
-  cmake -B build \
-    -DGGML_VULKAN=ON \
-    -DBUILD_SHARED_LIBS=OFF \
-    -DCMAKE_BUILD_TYPE=Release \
-    -DGGML_NATIVE=ON \
-    -DVulkan_INCLUDE_DIR=/usr/include \
-    -DVulkan_GLSLC_EXECUTABLE="$GLSLC"
-  cmake --build build --config Release -j'"$JOBS"' --target llama-server llama-cli llama-bench
-  test -x build/bin/llama-server
-  test -x build/bin/llama-cli
-  test -x build/bin/llama-bench
-  cp -f build/bin/llama-server build/bin/llama-cli build/bin/llama-bench /out/vulkan-laurent26.new/bin/
-  {
-    printf "repo=https://github.com/LaurentZuijdwijk/llama.cpp.git\n"
-    printf "ref=%s\n" "$LAURENT_BRANCH"
-    printf "commit=%s\n" "$LAURENT_COMMIT"
-    printf "base_image=%s\n" "$BUILD_IMAGE"
-    printf "base_image_id=%s\n" "$BUILD_IMAGE_ID"
-    printf "base_image_digest=%s\n" "$BUILD_IMAGE_DIGEST"
-    printf "os=%s\n" "$(. /etc/os-release; printf "%s %s" "$PRETTY_NAME" "$VERSION_ID")"
-    printf "glibc=%s\n" "$(ldd --version | head -1)"
-    printf "gcc=%s\n" "$(gcc --version | head -1)"
-    printf "cmake=%s\n" "$(cmake --version | head -1)"
-    printf "shaderc_tag=%s\n" "$SHADERC_TAG"
-    printf "glslc=%s\n" "$("$GLSLC" --version 2>&1 | head -1)"
-    printf "ggml_native=ON\n"
-    printf "cpu_target=%s\n" "${CPU_TARGET:-native}"
-  } > /out/vulkan-laurent26.new/BUILD-INFO
-  rm -rf /out/vulkan-laurent
-  mv /out/vulkan-laurent26.new /out/vulkan-laurent
 '
 fi
 fi
