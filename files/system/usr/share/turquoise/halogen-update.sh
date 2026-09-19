@@ -8,7 +8,11 @@ umask 077
 CONTAINER="${HALOGEN_CONTAINER:-halogen}"
 # 0.7.0 is the first release with lossless llama.cpp GGUF input; 0.11.x adds
 # the thinking answer-room and Pi's thinking-budget field names.
-IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:0.11.4}"
+# The tag floats on upstream's `latest`: every run pulls fresh and recreates
+# when the resolved image ID changes, so `sjust llm-engine` always ships the
+# newest release. Roll back with HALOGEN_IMAGE=...:<numeric-tag> (old images
+# stay on disk).
+IMAGE="${HALOGEN_IMAGE:-ghcr.io/peonist-ai/halogen-flash-server:latest}"
 # Reuse the existing Qwen3.8-Flash-Next GGUF cache maintained by Lemonade.
 MODELS="${HALOGEN_MODELS:-$HOME/.local/share/containers/storage/volumes/lemonade26-v108-cache/_data/qwen3.8-flash-next}"
 CHECKPOINT="${HALOGEN_CHECKPOINT:-/models/UD-IQ4_XS/Qwen3.8-Flash-Next-UD-IQ4_XS-00001-of-00003.gguf}"
@@ -31,7 +35,7 @@ PRESENCE_PENALTY="${HALOGEN_PRESENCE_PENALTY:-0.0}"
 ENABLE_THINKING="${HALOGEN_ENABLE_THINKING:-1}"
 REASONING_EFFORT="${HALOGEN_REASONING_EFFORT:-xhigh}"
 DRAFTER_DEFAULT="${HALOGEN_DRAFTER_DEFAULT:-1}"
-CONFIG_VERSION="11"
+CONFIG_VERSION="12"
 # The vision mode is part of the container contract. Encode it in the config
 # label so a mode switch recreates the container instead of early-exit
 # matching a deployment created with the other mode.
@@ -53,8 +57,8 @@ PIN_TRUNK="${HALOGEN_FLASH_PIN_TRUNK:-1}"
 # ("internal sizing error in the per-forward arena", or a zero-token hang).
 # 32768 no longer fits this host's device budget on 0.5.9+; 16384 does only
 # with a smaller KV pool, so both are set together.
-MAX_TOK="${HALOGEN_MAX_TOK:-16384}"
-PREFILL_CHUNK="${HALOGEN_PREFILL_CHUNK:-16384}"
+MAX_TOK="${HALOGEN_MAX_TOK:-8192}"
+PREFILL_CHUNK="${HALOGEN_PREFILL_CHUNK:-8192}"
 KV_POOL_POSITIONS="${HALOGEN_KV_POOL_POSITIONS:-262144}"
 MAX_TOKENS_DEFAULT="${HALOGEN_MAX_TOKENS_DEFAULT:-8192}"
 MAX_TOKENS_CAP="${HALOGEN_MAX_TOKENS_CAP:-65536}"
