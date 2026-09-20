@@ -89,16 +89,29 @@ fi
 # 4. Ensure toolbox container exists and matches the image
 if command -v toolbox >/dev/null 2>&1; then
   toolbox_exists="false"
-  if toolbox list 2>/dev/null | grep -q "$TOOLBOX_NAME"; then
+  if podman container exists "$TOOLBOX_NAME" 2>/dev/null; then
     toolbox_exists="true"
   fi
 
+  need_container_refresh="false"
   if [[ "$need_build" == "true" || "$toolbox_exists" != "true" ]]; then
-    if [[ "$toolbox_exists" == "true" ]]; then
+    need_container_refresh="true"
+  else
+    c_img=$(podman inspect "$TOOLBOX_NAME" --format '{{.Image}}' 2>/dev/null || true)
+    i_img=$(podman inspect "$IMAGE" --format '{{.Id}}' 2>/dev/null || true)
+    if [[ -n "$c_img" && -n "$i_img" && "$c_img" != "$i_img" ]]; then
+      echo "Toolbox container image differs from latest $IMAGE; refreshing."
+      need_container_refresh="true"
+    fi
+  fi
+
+  if [[ "$need_container_refresh" == "true" ]]; then
+    if [[ "$toolbox_exists" == "true" ]] || podman container exists "$TOOLBOX_NAME" 2>/dev/null; then
       echo "Refreshing toolbox container $TOOLBOX_NAME..."
-      toolbox rm -f "$TOOLBOX_NAME" >/dev/null 2>&1 || true
+      toolbox rm -f "$TOOLBOX_NAME" >/dev/null 2>&1 || podman rm -f "$TOOLBOX_NAME" >/dev/null 2>&1 || true
     else
       echo "Creating toolbox container $TOOLBOX_NAME..."
+      podman rm -f "$TOOLBOX_NAME" >/dev/null 2>&1 || true
     fi
     toolbox create "$TOOLBOX_NAME" \
       --image "$IMAGE" \
