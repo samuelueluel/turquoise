@@ -648,6 +648,13 @@ llm-engines force="false":
     [[ -f "$WRAPPER_SRC" ]] || WRAPPER_SRC="{{SHARE}}/llama-dispatch-wrapper.sh"
     if [[ -f "$WRAPPER_SRC" ]]; then
         echo -e "\033[36mSynchronizing and validating the four-engine dispatch wrapper...\033[0m"
+        if [[ "$(podman inspect lemonade 2>/dev/null | jq -r '.[0].State.Status // empty')" != "running" ]]; then
+            podman start lemonade
+            for _ in {1..10}; do
+                [[ "$(podman inspect lemonade 2>/dev/null | jq -r '.[0].State.Status // empty')" == "running" ]] && break
+                sleep 1
+            done
+        fi
         podman cp "$WRAPPER_SRC" lemonade:/opt/lemonade/llama/llama-server
         podman cp "$WRAPPER_SRC" lemonade:/opt/lemonade/llama/vulkan/bin/llama-server
         podman cp "$WRAPPER_SRC" lemonade:/root/.cache/lemonade/bin/llamacpp/vulkan/llama-server
