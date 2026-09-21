@@ -797,7 +797,7 @@ update quick="false" force="false":
 
     if command -v turbovault >/dev/null; then
         echo -e "\033[36m  Checking pinned Samuel TurboVault build...\033[0m"
-        TV_PIN="${TURBOVAULT_PIN:-samuel-v2.0.0.5}"
+        TV_PIN="${TURBOVAULT_PIN:-samuel-v2.0.0.7}"
         SRC_TV="$HOME/.local/src/turbovault"
         PIN_FILE="$HOME/.local/state/turbovault/build-pin"
         current_pin=$(cat "$PIN_FILE" 2>/dev/null | sed -n 's/^tag=//p' || true)
