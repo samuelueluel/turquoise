@@ -27,10 +27,13 @@ see General-Tooling and MinerU-Setup.md. Requires the mineru-rocm-venv
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
+import shutil
 import subprocess
+import tempfile
 import time
 from pathlib import Path
 
@@ -177,30 +180,115 @@ def _build_mineru_invocation(
     return cmd, env, supports_backend
 
 
-def run_mineru(cfg: dict, pdf_path: Path, item_key: str) -> bool:
-    """Run the configured MinerU CLI and copy its Markdown to the sidecar.
+def _sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for block in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
 
-    The runner supports both MinerU 3.x (``mineru -b pipeline``) and the
-    retained 1.x ``magic-pdf`` fallback (no ``-b``).  MinerU CLIs may exit 0
-    without producing output, so success requires both a zero exit code and a
-    generated Markdown file.
+
+def _parser_version(bin_: Path) -> str | None:
+    """Read the version from the configured MinerU environment, not its name."""
+    python = bin_.resolve().parent.parent / "bin" / "python"
+    if python.is_file():
+        code = (
+            "import importlib.metadata as m; "
+            "names=('magic-pdf','mineru','magic_pdf'); "
+            "print(next((f'{n}=={m.version(n)}' for n in names "
+            "if any(d.metadata.get('Name','').lower()==n.lower() for d in m.distributions())), ''))"
+        )
+        try:
+            result = subprocess.run(
+                [str(python), "-c", code], capture_output=True, text=True, timeout=15
+            )
+            version = (result.stdout or "").strip()
+            if result.returncode == 0 and version:
+                return version
+        except Exception as exc:
+            logger.debug("mineru: package-version probe failed: %s", exc)
+    try:
+        result = subprocess.run(
+            [str(bin_), "--version"], capture_output=True, text=True, timeout=15
+        )
+        output = "\n".join((result.stdout or "", result.stderr or ""))
+        for line in output.splitlines():
+            if "version" in line.lower():
+                return line.strip()
+    except Exception as exc:
+        logger.debug("mineru: CLI-version probe failed: %s", exc)
+    return None
+
+
+def _write_json_atomic(path: Path, value: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd, tmp_name = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(value, f, ensure_ascii=False, indent=2, sort_keys=True)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_name, path)
+    except Exception:
+        try:
+            os.unlink(tmp_name)
+        except OSError:
+            pass
+        raise
+
+
+def _find_content_list(out_dir: Path) -> Path | None:
+    try:
+        matches = sorted(out_dir.glob("*/txt/*_content_list.json"))
+        return matches[0] if matches else None
+    except OSError:
+        return None
+
+
+def run_mineru(
+    cfg: dict,
+    pdf_path: Path,
+    item_key: str,
+    attachment_key: str | None = None,
+) -> bool:
+    """Parse to an immutable run directory and atomically publish its Markdown.
+
+    Raw MinerU outputs are never cleared or reused. Each run retains its
+    page-indexed ``content_list.json`` and a manifest binding the output to the
+    PDF, attachment, parser version, and raw Markdown hash.
     """
     bin_ = Path(cfg["bin"])
+    pdf_path = Path(pdf_path)
     if not bin_.exists():
         logger.warning("mineru: binary not found: %s", bin_)
         return False
+    if not pdf_path.is_file():
+        logger.warning("mineru: PDF not found: %s", pdf_path)
+        return False
+    try:
+        pdf_hash = _sha256_file(pdf_path)
+    except OSError as exc:
+        logger.warning("mineru: could not hash PDF for %s: %s", item_key, exc)
+        return False
+
     work = Path(cfg["work_dir"]) / item_key
+    run_id = f"{time.strftime('%Y%m%dT%H%M%S')}-{time.time_ns()}-{pdf_hash[:12]}"
+    run_dir = work / "runs" / run_id
+    out_dir = run_dir / "out"
+    log_path = run_dir / "run.log"
     work.mkdir(parents=True, exist_ok=True)
-    out_dir = work / "out"
-    log_path = work / "run.log"
+    out_dir.mkdir(parents=True, exist_ok=False)
     cmd, env, supports_backend = _build_mineru_invocation(cfg, pdf_path, out_dir)
+    parser_version = _parser_version(bin_)
     logger.info(
-        "mineru: using %s CLI (backend_flag=%s, config=%s)",
-        bin_, supports_backend, env.get("MINERU_TOOLS_CONFIG_JSON", "default"),
+        "mineru: using %s CLI (backend_flag=%s, version=%s, config=%s)",
+        bin_, supports_backend, parser_version or "unknown",
+        env.get("MINERU_TOOLS_CONFIG_JSON", "default"),
     )
     try:
         start = time.time()
-        with open(log_path, "w", encoding="utf-8") as lf:
+        with log_path.open("w", encoding="utf-8") as lf:
             proc = subprocess.run(
                 cmd,
                 env=env,
@@ -208,24 +296,61 @@ def run_mineru(cfg: dict, pdf_path: Path, item_key: str) -> bool:
                 stderr=subprocess.STDOUT,
                 timeout=int(cfg.get("timeout_seconds", 3600)),
             )
+        # Keep the conventional latest log path for existing watchdogs while
+        # retaining the authoritative copy beside this run's raw artifacts.
+        try:
+            shutil.copy2(log_path, work / "run.log")
+        except OSError:
+            pass
         elapsed = time.time() - start
         md = _find_output_md(out_dir)
         if proc.returncode == 0 and md is not None:
+            raw_markdown = md.read_bytes()
+            content_list = _find_content_list(out_dir)
             side = sidecar_path(cfg, item_key)
             side.parent.mkdir(parents=True, exist_ok=True)
-            side.write_text(md.read_text(encoding="utf-8", errors="replace"), encoding="utf-8")
+            fd, tmp_name = tempfile.mkstemp(prefix=f".{side.name}.", suffix=".tmp", dir=side.parent)
+            try:
+                with os.fdopen(fd, "wb") as f:
+                    f.write(raw_markdown)
+                    f.flush()
+                    os.fsync(f.fileno())
+                os.replace(tmp_name, side)
+            except Exception:
+                try:
+                    os.unlink(tmp_name)
+                except OSError:
+                    pass
+                raise
+            manifest = {
+                "manifest_schema": 1,
+                "item_key": item_key,
+                "attachment_key": attachment_key,
+                "pdf_sha256": pdf_hash,
+                "parser_version": parser_version,
+                "run_id": run_id,
+                "created_at": time.strftime("%Y-%m-%dT%H:%M:%S"),
+                "raw_markdown_path": str(md),
+                "raw_markdown_sha256": hashlib.sha256(raw_markdown).hexdigest(),
+                "content_list_path": str(content_list) if content_list else None,
+                "content_list_sha256": _sha256_file(content_list) if content_list else None,
+                "run_log_path": str(log_path),
+                "backend_flag_supported": supports_backend,
+            }
+            _write_json_atomic(run_dir / "manifest.json", manifest)
+            _write_json_atomic(work / "latest-run.json", manifest)
             logger.info(
-                "mineru: parsed %s in %.0fs -> %s (%.1f KB)",
-                item_key, elapsed, side, side.stat().st_size / 1024,
+                "mineru: parsed %s in %.0fs -> %s (%.1f KB); raw run: %s",
+                item_key, elapsed, side, side.stat().st_size / 1024, run_dir,
             )
             return True
         logger.warning(
-            "mineru: parse failed for %s (rc=%s, %.0fs); log: %s",
+            "mineru: parse failed for %s (rc=%s, %.0fs); retained log: %s",
             item_key, proc.returncode, elapsed, log_path,
         )
         return False
     except Exception as e:
-        logger.warning("mineru: parse raised for %s: %s", item_key, e)
+        logger.warning("mineru: parse raised for %s: %s; retained work: %s", item_key, e, run_dir)
         return False
 
 
@@ -233,10 +358,10 @@ def try_auto_parse(item_key: str, reader, config_path: str | None = None) -> tup
     """Return ``(fulltext, source)`` for an item, parsing with MinerU if needed.
 
     Fast path: sidecar already exists (covers manual parses and prior runs).
-    Otherwise, if ``mineru.enabled`` and the item has a resolvable PDF, run
-    magic-pdf, write the sidecar, and return its text. Returns None when no
-    sidecar exists, MinerU is disabled, or the parse fails — the caller then
-    falls back to text-layer extraction. Never raises.
+    Otherwise, if ``mineru.enabled`` and the item has exactly one resolvable PDF,
+    run MinerU and return its text. Multiple PDF attachments are ambiguous and
+    are not selected implicitly. A caller applying the quality gate must not
+    fall back after a parse failure.
     """
     if not item_key:
         return None
@@ -255,16 +380,20 @@ def try_auto_parse(item_key: str, reader, config_path: str | None = None) -> tup
         logger.warning("mineru: attachment resolution failed for %s: %s", item_key, e)
         return None
 
-    pdf: Path | None = None
-    for att in attachments:
-        rp = att.get("resolved_path")
-        if rp and str(rp).lower().endswith(".pdf") and Path(rp).exists():
-            pdf = Path(rp)
-            break
-    if pdf is None:
+    pdfs = [
+        (str(att.get("key") or ""), Path(att["resolved_path"]))
+        for att in attachments
+        if att.get("resolved_path")
+        and str(att["resolved_path"]).lower().endswith(".pdf")
+        and Path(att["resolved_path"]).is_file()
+    ]
+    if len(pdfs) != 1:
+        if pdfs:
+            logger.warning("mineru: refusing ambiguous PDF attachment set for %s (%s PDFs)", item_key, len(pdfs))
         return None
+    attachment_key, pdf = pdfs[0]
 
-    if run_mineru(cfg, pdf, item_key):
+    if run_mineru(cfg, pdf, item_key, attachment_key=attachment_key):
         text = read_sidecar(cfg, item_key)
         if text is not None:
             return text, "mineru"
