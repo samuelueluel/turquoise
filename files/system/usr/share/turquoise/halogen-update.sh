@@ -455,16 +455,9 @@ if [[ "$old_exists" == true ]]; then
   esac
 fi
 [[ -z "$ipc" ]] || create_args+=(--ipc "$ipc")
-if [[ "$old_exists" == true ]]; then
-  restart_value="$restart_name"
-  [[ -n "$restart_value" && "$restart_value" != "no" ]] || restart_value="unless-stopped"
-else
-  restart_value="unless-stopped"
-fi
-if [[ "$restart_value" == "on-failure" && "$restart_max" =~ ^[1-9][0-9]*$ ]]; then
-  restart_value="$restart_value:$restart_max"
-fi
-create_args+=(--restart "$restart_value")
+# Recover up to three crashes, but never start Halogen at boot. Podman's
+# should-start-on-boot filter selects always/unless-stopped, not on-failure.
+create_args+=(--restart on-failure:3)
 # Podman rejects an explicit shared-memory size with host IPC; host IPC
 # already supplies the relevant namespace, so do not carry the stale value.
 if [[ "$ipc" != "host" && "$shm_size" =~ ^[1-9][0-9]*$ ]]; then
