@@ -844,11 +844,6 @@ update quick="false" force="false":
         fi
     fi
 
-    if [[ -f "$HOME/.agents/mcp/searxng/venv/bin/pip" ]]; then
-        echo -e "\033[36m  Updating SearxNG MCP virtualenv dependencies...\033[0m"
-        "$HOME/.agents/mcp/searxng/venv/bin/pip" install --upgrade -q mcp requests 2>/dev/null || true
-    fi
-
     if [[ -x "{{HOME}}/.local/bin/zotero-mcp-server" ]]; then
         systemctl --user restart zotero-mcp.service 2>/dev/null || true
         echo -e "  \033[32mZotero MCP fork installed; service restarted.\033[0m"

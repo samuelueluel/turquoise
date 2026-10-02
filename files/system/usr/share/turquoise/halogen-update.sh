@@ -2,6 +2,7 @@
 # Pull and (only when needed) recreate the standalone Peonist Halogen service.
 # Halogen is a closed-source release image, not a llama.cpp source build. Keep
 # this service outside Lemonade's llama-server binary/dispatch volume.
+# Provision/update only: never start or restart Halogen implicitly.
 set -Eeuo pipefail
 umask 077
 
@@ -35,7 +36,7 @@ PRESENCE_PENALTY="${HALOGEN_PRESENCE_PENALTY:-0.0}"
 ENABLE_THINKING="${HALOGEN_ENABLE_THINKING:-1}"
 REASONING_EFFORT="${HALOGEN_REASONING_EFFORT:-xhigh}"
 DRAFTER_DEFAULT="${HALOGEN_DRAFTER_DEFAULT:-1}"
-CONFIG_VERSION="12"
+CONFIG_VERSION="13"
 # The vision mode is part of the container contract. Encode it in the config
 # label so a mode switch recreates the container instead of early-exit
 # matching a deployment created with the other mode.
@@ -383,10 +384,10 @@ if [[ "$old_exists" == true && "$FORCE" != true &&
       "$old_image_id" == "$new_image_id" &&
       "$old_config_version" == "$CONFIG_VERSION" ]]; then
   echo "halogen-update: $CONTAINER already uses $IMAGE at $new_image_id (config $CONFIG_VERSION)"
-  if [[ "$old_state" != running ]]; then
-    echo "halogen-update: starting stopped $CONTAINER"
-    podman start "$CONTAINER" >/dev/null
-  fi
+  # Repair legacy restart policies even when the image/config is unchanged.
+  # An update is never permission to start a stopped inference engine.
+  podman update --restart=no "$CONTAINER" >/dev/null
+  echo "halogen-update: preserving state $old_state; start explicitly with halogen start"
   exit 0
 fi
 
@@ -455,9 +456,8 @@ if [[ "$old_exists" == true ]]; then
   esac
 fi
 [[ -z "$ipc" ]] || create_args+=(--ipc "$ipc")
-# Recover up to three crashes, but never start Halogen at boot. Podman's
-# should-start-on-boot filter selects always/unless-stopped, not on-failure.
-create_args+=(--restart on-failure:3)
+# No boot activation or automatic crash retries: explicit launches only.
+create_args+=(--restart=no)
 # Podman rejects an explicit shared-memory size with host IPC; host IPC
 # already supplies the relevant namespace, so do not carry the stale value.
 if [[ "$ipc" != "host" && "$shm_size" =~ ^[1-9][0-9]*$ ]]; then
@@ -513,5 +513,6 @@ if [[ "$old_exists" == true ]]; then
 fi
 podman rename "$temp_container" "$CONTAINER"
 temp_container=""
-podman start "$CONTAINER" >/dev/null
-echo "halogen-update: $CONTAINER started; models remain at $MODELS (read-only mount)"
+# Leave new/replacement containers stopped, even if the old one was running.
+# Maintenance (including sjust update/llm-engine) must not load model weights.
+echo "halogen-update: $CONTAINER updated and left stopped; start explicitly with halogen start; models remain at $MODELS (read-only mount)"
