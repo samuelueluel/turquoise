@@ -465,7 +465,7 @@ modules:
 
   # ── Install build-time toolchain ─────────────────────────────────────────
   # All build scripts assume these are pre-installed; cleaned up afterwards.
-  #   cargo, rust, rust-std-static, binutils, cpp  ← Rust builds (nirius, cclip, rmpcd, keyd, termfilechooser)
+  #   cargo, rust, rust-std-static, binutils, cpp  ← Rust builds (nirius, cclip, rmpcd, keyd, termfilechooser, mmdr)
   #   gtk3-devel, glib2-devel                      ← nwg-look
   #   meson, ninja-build, gcc, gcc-c++             ← termfilechooser, cclip, keyd, noctalia
   #   wayland-devel, sqlite-devel, xxhash-devel    ← cclip
@@ -637,6 +637,13 @@ modules:
   - type: script
     scripts:
       - build-rmpcd.sh
+
+  # ── Build mmdr from source ─────────────────────────────────────────────────
+  # Pure-Rust Mermaid renderer for the Claude Code figures plugin; not in
+  # Fedora or Homebrew (mermaid-cli would need a headless Chrome download)
+  - type: script
+    scripts:
+      - build-mmdr.sh
 
   # ── Build cclip from source ────────────────────────────────────────────────
   # Not in Fedora repos; built from source using cargo
