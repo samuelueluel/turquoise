@@ -20,6 +20,10 @@ Prints: "applied" | "already" | "mismatch" (mismatch exits 1).
 """
 import shutil
 import sys
+
+# Retired with MinerU (2026-10-08): applying this would overwrite the fork's
+# mineru.py and re-enable MinerU. Kept for history only.
+sys.exit("zotero-mcp-mineru-patch.py: MinerU is retired; do not apply this overlay")
 from pathlib import Path
 
 pkg = Path(sys.argv[1])
