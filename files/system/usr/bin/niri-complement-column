@@ -1,93 +1,179 @@
 #!/usr/bin/env python3
-# Resizes the column immediately to the right of the focused column to the
-# complement of the focused column's width, so the two columns together span
-# the working area exactly (no view shift when swapping focus between them).
-# Does nothing if the focused column is at or near 100%.
-#
-# Niri's percentage widths are taken against working_width, where
-#     working_width = screen_w - 2 * (gaps + border_width)
-# (verified empirically: in tile mode with gaps=2, border=2, screen=1536,
-#  set-column-width 60% produces tile_size = 916.8 = 0.60 * 1528.)
-# Both gaps and border can differ between normal and tile mode, so they are
-# read from the live niri config file at runtime.
+"""
+niri-complement-column:
+- No arguments (or 'complement'):
+    Resizes the adjacent column to the complement of the focused column's width,
+    so the two columns span the screen exactly (100%).
+    Works bidirectionally: right neighbor if present, otherwise left neighbor.
+- With a delta argument ('+5%', '-5%', etc.):
+    Performs paired 'split divider' resizing: grows/shrinks focused column while
+    simultaneously shrinking/growing the adjacent column by the same amount,
+    keeping their sum at 100% of the working area.
+"""
 
-import json, os, re, subprocess, sys
+import json
+import os
+import re
+import socket
+import sys
 
-CONFIG_PATH = os.path.expanduser('~/.config/niri/config.kdl')
+CONFIG_PATH = os.path.expanduser("~/.config/niri/config.kdl")
 
-def niri(cmd):
-    return json.loads(subprocess.run(['niri', 'msg', '--json'] + cmd, capture_output=True, text=True).stdout)
+
+class NiriClient:
+    def __init__(self):
+        sock_path = os.environ.get("NIRI_SOCKET")
+        if not sock_path:
+            raise RuntimeError("NIRI_SOCKET not set")
+        self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.s.connect(sock_path)
+        self.buf = b""
+
+    def request(self, req_obj):
+        line = json.dumps(req_obj) + "\n"
+        self.s.sendall(line.encode("utf-8"))
+        while b"\n" not in self.buf:
+            chunk = self.s.recv(4096)
+            if not chunk:
+                break
+            self.buf += chunk
+        idx = self.buf.index(b"\n")
+        line = self.buf[:idx]
+        self.buf = self.buf[idx + 1 :]
+        return json.loads(line.decode("utf-8"))
+
+    def action(self, action_name, **kwargs):
+        return self.request({"Action": {action_name: kwargs}})
+
+    def close(self):
+        self.s.close()
+
 
 def read_layout_padding():
-    """Return (gaps + border_width) in logical pixels — the per-side padding
-    between the screen edge and a 100%-width tile."""
-    with open(CONFIG_PATH) as f:
-        text = f.read()
+    try:
+        with open(CONFIG_PATH) as f:
+            text = f.read()
+    except OSError:
+        return 0
 
-    m = re.search(r'(?m)^\s+gaps\s+(\d+)', text)
+    m = re.search(r"(?m)^\s+gaps\s+(\d+)", text)
     gaps = int(m.group(1)) if m else 0
 
-    # Find the border block and its (uncommented) width line. If the block
-    # contains `off`, treat border as 0.
     border = 0
-    bm = re.search(r'(?ms)^\s+border\s*\{(.*?)\}', text)
+    bm = re.search(r"(?ms)^\s+border\s*\{(.*?)\}", text)
     if bm:
         block = bm.group(1)
-        if not re.search(r'(?m)^\s*off\b', block):
-            wm = re.search(r'(?m)^\s*width\s+(\d+)', block)
+        if not re.search(r"(?m)^\s*off\b", block):
+            wm = re.search(r"(?m)^\s*width\s+(\d+)", block)
             if wm:
                 border = int(wm.group(1))
     return gaps + border
 
-wins    = niri(['windows'])
-ws_data = niri(['workspaces'])
-outputs = niri(['outputs'])
 
-focused_ws_id = next((ws['id'] for ws in ws_data if ws['is_focused']), None)
-if focused_ws_id is None:
-    sys.exit(0)
+def main():
+    try:
+        client = NiriClient()
+    except Exception:
+        sys.exit(0)
 
-screen_w = next(
-    o['logical']['width'] for o in outputs.values() if o['logical'] is not None
-)
+    wins = client.request("Windows").get("Ok", {}).get("Windows", [])
+    ws_data = client.request("Workspaces").get("Ok", {}).get("Workspaces", [])
+    outputs = client.request("Outputs").get("Ok", {}).get("Outputs", {})
 
-focused = next((w for w in wins if w.get('is_focused')), None)
-if focused is None or focused.get('is_floating'):
-    sys.exit(0)
+    focused_ws = next((ws for ws in ws_data if ws.get("is_focused")), None)
+    if not focused_ws:
+        sys.exit(0)
+    focused_ws_id = focused_ws["id"]
 
-pos = focused['layout'].get('pos_in_scrolling_layout')
-if pos is None:
-    sys.exit(0)
+    out_name = focused_ws.get("output")
+    out = outputs.get(out_name) if out_name else None
+    if not out or not out.get("logical"):
+        out = next((o for o in outputs.values() if o.get("logical")), None)
+    if not out or not out.get("logical"):
+        sys.exit(0)
 
-focused_col = pos[0]
-focused_tile_w = focused['layout']['tile_size'][0]
+    screen_w = out["logical"]["width"]
 
-pad = read_layout_padding()
-working_width = screen_w - 2 * pad
+    focused = next((w for w in wins if w.get("is_focused")), None)
+    if not focused or focused.get("is_floating"):
+        sys.exit(0)
 
-proportion = focused_tile_w / working_width
+    layout = focused.get("layout") or {}
+    pos = layout.get("pos_in_scrolling_layout")
+    if pos is None:
+        sys.exit(0)
 
-# Skip if focused column already fills the working area.
-if proportion >= 0.99:
-    sys.exit(0)
+    focused_col = pos[0]
+    tile_size = layout.get("tile_size")
+    if not tile_size:
+        sys.exit(0)
+    focused_tile_w = tile_size[0]
 
-complement_pct = (1.0 - proportion) * 100
+    pad = read_layout_padding()
+    working_width = screen_w - 2 * pad
+    if working_width <= 0:
+        sys.exit(0)
 
-# Find one window in the column immediately to the right.
-right_win = next(
-    (w for w in wins
-     if w.get('workspace_id') == focused_ws_id
-     and not w.get('is_floating')
-     and w['layout'].get('pos_in_scrolling_layout', [None])[0] == focused_col + 1),
-    None
-)
+    p_foc = focused_tile_w / working_width
 
-if right_win is None:
-    sys.exit(0)
+    # Find tiled windows on this workspace
+    ws_wins = [
+        w
+        for w in wins
+        if w.get("workspace_id") == focused_ws_id
+        and not w.get("is_floating")
+        and (w.get("layout") or {}).get("pos_in_scrolling_layout") is not None
+    ]
 
-def niri_action(*args):
-    subprocess.run(['niri', 'msg', 'action'] + list(args))
+    # Find adjacent window (prefer right neighbor, then left neighbor)
+    right_win = next(
+        (w for w in ws_wins if w["layout"]["pos_in_scrolling_layout"][0] == focused_col + 1),
+        None,
+    )
+    left_win = next(
+        (w for w in ws_wins if w["layout"]["pos_in_scrolling_layout"][0] == focused_col - 1),
+        None,
+    )
+    adj_win = right_win if right_win is not None else left_win
 
-niri_action('focus-window', '--id', str(right_win['id']))
-niri_action('set-column-width', f'{complement_pct:.6f}%')
-niri_action('focus-window', '--id', str(focused['id']))
+    # Parse argument
+    delta = None
+    if len(sys.argv) > 1 and sys.argv[1].lower() != "complement":
+        raw = sys.argv[1].strip()
+        try:
+            if raw.endswith("%"):
+                delta = float(raw[:-1]) / 100.0
+            else:
+                delta = float(raw)
+        except ValueError:
+            delta = None
+
+    if delta is not None:
+        # Paired resize mode
+        if adj_win is None:
+            # Single column on workspace: adjust focused column directly
+            client.action("SetColumnWidth", change={"AdjustProportion": delta * 100.0})
+        else:
+            current_pct = (p_foc * 100.0) if p_foc < 0.95 else 50.0
+            new_foc_pct = max(15.0, min(85.0, current_pct + (delta * 100.0)))
+            new_adj_pct = 100.0 - new_foc_pct
+
+            client.action("SetColumnWidth", change={"SetProportion": new_foc_pct})
+            client.action("FocusWindow", id=adj_win["id"])
+            client.action("SetColumnWidth", change={"SetProportion": new_adj_pct})
+            client.action("FocusWindow", id=focused["id"])
+    else:
+        # Complement mode (Mod+Ctrl+I)
+        if adj_win is None or p_foc >= 0.99:
+            sys.exit(0)
+
+        complement_pct = max(15.0, min(85.0, (1.0 - p_foc) * 100.0))
+        client.action("FocusWindow", id=adj_win["id"])
+        client.action("SetColumnWidth", change={"SetProportion": complement_pct})
+        client.action("FocusWindow", id=focused["id"])
+
+    client.close()
+
+
+if __name__ == "__main__":
+    main()

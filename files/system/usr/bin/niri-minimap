@@ -2,9 +2,10 @@
 """
 niri-minimap: A live symbolic spatial minimap overlay for Niri.
 
-Shows workspaces stacked vertically with windows represented by their app icons,
-arranged according to their column/tile positions. The focused window gets a
-highlight border that updates in real time as you change focus.
+Shows workspaces stacked vertically, with each column's focused or most recently
+focused window shown as a full-size icon and the other windows in a miniature
+strip to its right. This applies to both native tabs and vertically tiled
+columns. The focused window's highlight updates in real time as you change focus.
 
 Toggle on/off with the same keybind. Does NOT steal keyboard focus, so you can
 use Mod+WASD to navigate while the minimap is visible.
@@ -18,6 +19,7 @@ import ctypes.util
 import glob
 import json
 import os
+import re
 import signal
 import subprocess
 import sys
@@ -174,25 +176,36 @@ gi.require_version("Gtk4LayerShell", "1.0")
 gi.require_version("Pango", "1.0")
 gi.require_version("PangoCairo", "1.0")
 from gi.repository import Gdk, GLib, Gtk, Gtk4LayerShell, Pango, PangoCairo
+import cairo
 
 # --- Configuration ---
 # Layout
 MINIMAP_WIDTH = (
     0.55  # default width as a fraction of monitor width (expands if content needs more)
 )
-ICON_SIZE = 43  # px, app icon size, 48
+ICON_SIZE = 43  # px, main app icon size
+MINI_ICON_SIZE = 20  # px, other windows in the column's right-side strip
+MINI_TILE_PAD = 3  # px, padding inside miniature tiles
+MINI_CELL_PAD = 2  # px, margin around miniature tiles
+MINI_STRIP_GAP = -8  # px, main/mini face gap; negative overlaps the parent
 CELL_PAD = 6  # px, outer margin around each tile (space outside the ring)
 TILE_PAD = 3  # px, inner padding between icon and the ring
-COL_SPACING = 4  # px, horizontal gap between columns (adjusted for CELL_PAD)
-TILE_SPACING = 0  # px, vertical gap between tiles in a column (adjusted for CELL_PAD)
-WS_SPACING = 3  # px, vertical gap between workspaces (adjusted for CELL_PAD)
+COL_SPACING = 22  # px, uniform column gap (plus tile CELL_PAD margins)
+TILE_SPACING = 2  # px, vertical gap between tiles in a column (adjusted for CELL_PAD)
+WS_SPACING = COL_SPACING  # match vertical and horizontal main-tile gaps
 
 # Borders & radii
 BORDER_WIDTH = 7  # px, highlight ring around focused/active tiles
 OUTER_BORDER_WIDTH = 1  # px, border around the whole minimap panel
 OUTER_BORDER_RADIUS = 9  # px, corner rounding of the outer panel
-TILE_BORDER_RADIUS = 5  # px, corner rounding of tiles and columns (focused workspace)
+TILE_BORDER_RADIUS = 1  # px, corner rounding of tiles and columns (focused workspace)
 UNFOCUSED_TILE_RADIUS = "24px"  # border-radius for tiles/columns in non-focused workspaces (24px = squircle/near-circle, prevents shadow bug)
+# Match the main tile's corner-radius proportion, not its absolute pixel radius.
+MINI_TILE_RADIUS = round(
+    float(UNFOCUSED_TILE_RADIUS.removesuffix("px"))
+    * (MINI_ICON_SIZE + 2 * MINI_TILE_PAD)
+    / (ICON_SIZE + 2 * (TILE_PAD + BORDER_WIDTH))
+)
 UNFOCUSED_TILE_PAD = TILE_PAD + 4  # extra padding for circular tiles so the icon clears the circle boundary
 FOCUS_RING_CIRCLE = (
     False  # True = circle focus ring (border-radius 24px), False = rounded square
@@ -211,6 +224,8 @@ SPINE_COLOR = ("#6E3840", 1.00)  # spine column background (chimayo red)
 WS_RING_COLOR = ("#DA9E8A", 1.00)  # focused-workspace ring (turquoise)
 SPINE_LINE_COLOR = ("#96E050", 1.00)  # faint vertical accent through the spine column
 TAG_DOT_COLOR = ("#96E050", 1.00)  # color of dots / dots with numbers on window tiles (chamisa)
+TILE_OUTLINE_WIDTH = 2  # px, gypsum outline thickness
+TILE_OUTLINE_COLOR = ("#E2D8D0", 1.00)  # tile outline ring (gypsum)
 
 # Timing
 FADE_MS = 50  # fade-in/out duration in ms (quick to stay unobtrusive)
@@ -227,6 +242,23 @@ def _c(color):
     if alpha >= 1.0:
         return f"rgb({r}, {g}, {b})"
     return f"rgba({r}, {g}, {b}, {alpha})"
+
+
+# Tile shadows: intense multi-layer black drop shadow + outer black containment rim + gypsum outline (drawn last so it stays on top in GTK4)
+TILE_SHADOW = (
+    "0 9px 18px 3px rgba(0, 0, 0, 0.94), "
+    "0 4px 9px 2px rgba(0, 0, 0, 1.0), "
+    "0 0 5px 1px rgb(0, 0, 0), "
+    f"0 0 0 {TILE_OUTLINE_WIDTH + 2}px rgb(0, 0, 0), "
+    f"0 0 0 {TILE_OUTLINE_WIDTH}px {_c(TILE_OUTLINE_COLOR)}"
+)
+STACKED_TILE_SHADOW = (
+    "0 7px 13px 2px rgba(0, 0, 0, 0.94), "
+    "0 3px 6px 1px rgba(0, 0, 0, 1.0), "
+    "0 0 4px 1px rgb(0, 0, 0), "
+    "0 0 0 3.5px rgb(0, 0, 0), "
+    f"0 0 0 2px {_c(TILE_OUTLINE_COLOR)}"
+)
 
 
 # --- .desktop icon cache (pre-scanned in background thread above) ---
@@ -266,25 +298,10 @@ def lookup_icon_name(app_id, icon_theme):
 
     return "application-x-executable"
 
-
-def check_active_pi_types():
-    """Check ~/.pi/running/*.state for active pihat/betahat sessions."""
-    types = set()
-    for sfile in glob.glob("/var/home/samuel/.pi/running/*.state"):
-        try:
-            with open(sfile) as f:
-                for line in f:
-                    if line.startswith("type="):
-                        types.add(line.strip().split("=", 1)[1].lower())
-        except Exception:
-            pass
-    return types
-
-
 def detect_agent_info(
     app_id, title, is_urgent=False, is_focused=False, is_acknowledged=False
 ):
-    """Detect if a terminal window is running a CLI agent (agy, pi, pihat, beta, betahat).
+    """Detect if a terminal window is running a CLI agent (agy, claude, claudebeta, pi, pihat, beta, betahat).
     Returns (label_text, badge_color_hex, is_urgent_alert, has_widehat) or None.
     """
     if not app_id or "ghostty" not in app_id.lower():
@@ -302,25 +319,35 @@ def detect_agent_info(
     default_color = "#DA9E8A"  # Pink Sandstone
     has_hat = False
 
-    active_pi_types = check_active_pi_types()
-
-    if t_lower == "agy" or t_lower.startswith("agy ") or t_lower.startswith("agy:"):
+    if re.search(r"\b(agy|antigravity)\b", t_lower):
         agent_type = "agy"
         default_label = "a"
-    elif "pihat" in t_lower or ("pihat" in active_pi_types and ("pi" in t_lower or "π" in t)):
-        agent_type = "pihat"
-        default_label = "π"
+    # Claude Code launchers title windows "ĉ - dir" / "ĉβ - dir"; check before
+    # the beta/pi branches because "ĉβ" also contains β.
+    elif "ĉβ" in t_clean or "c\u0302β" in t_clean:
+        agent_type = "claudebeta"
+        default_label = "β"
+        default_color = "#D97757"  # Claude orange
         has_hat = True
-    elif "pi" in t_lower or "π" in t:
-        agent_type = "pi"
-        default_label = "π"
-    elif "betahat" in t_lower or ("betahat" in active_pi_types and ("beta" in t_lower or "β" in t)):
+    elif t_clean.startswith(("ĉ", "c\u0302")):
+        agent_type = "claude"
+        default_label = "c"
+        default_color = "#D97757"  # Claude orange
+        has_hat = True
+    elif "betahat" in t_lower or "β̂" in t or "\u03b2\u0302" in t or "β^" in t:
         agent_type = "betahat"
         default_label = "β"
         has_hat = True
     elif "beta" in t_lower or "β" in t:
         agent_type = "beta"
         default_label = "β"
+    elif "pihat" in t_lower or "π̂" in t or "\u03c0\u0302" in t or "π^" in t:
+        agent_type = "pihat"
+        default_label = "π"
+        has_hat = True
+    elif "pi" in t_lower or "π" in t:
+        agent_type = "pi"
+        default_label = "π"
 
     if not agent_type:
         return None
@@ -331,7 +358,53 @@ def detect_agent_info(
     return (default_label, default_color, False, has_hat)
 
 
-def parse_state(workspaces_raw, windows_raw, focused_output=None):
+def draw_spine_line(area, cr, width, height, tag_badges):
+    """Keep the spine over tile faces, but never paint over a dot or number."""
+    cr.save()
+    cr.rectangle(0, 0, width, height)
+    cr.clip()
+    cr.rectangle(0, 0, width, height)
+    for badge in tag_badges:
+        ok, bounds = badge.compute_bounds(area)
+        if not ok or bounds.get_x() >= width or bounds.get_x() + bounds.get_width() <= 0:
+            continue
+        cr.new_sub_path()
+        cr.arc(
+            bounds.get_x() + bounds.get_width() / 2,
+            bounds.get_y() + bounds.get_height() / 2,
+            min(bounds.get_width(), bounds.get_height()) / 2,
+            0, 6.283185307179586,
+        )
+    cr.set_fill_rule(cairo.FILL_RULE_EVEN_ODD)
+    cr.clip()
+
+    hex_color, alpha = SPINE_LINE_COLOR
+    rgb = tuple(int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    gradient = cairo.LinearGradient(0, 0, 0, height)
+    for offset, opacity in ((0, 0), (0.15, alpha), (0.85, alpha), (1, 0)):
+        gradient.add_color_stop_rgba(offset, *rgb, opacity)
+    cr.set_source(gradient)
+    cr.paint()
+    cr.restore()
+
+
+def column_display_tiles(tiles):
+    """Main tile first (focused, then most recently focused); strip in tile order."""
+    def recency(tile):
+        timestamp = tile.get("focus_timestamp") or {}
+        return (
+            tile.get("is_focused", False),
+            tile.get("focus_order", 0),
+            timestamp.get("secs", 0),
+            timestamp.get("nanos", 0),
+            -tile["tile_idx"],
+        )
+
+    main = max(tiles, key=recency)
+    return [main] + [tile for tile in tiles if tile["id"] != main["id"]]
+
+
+def parse_state(workspaces_raw, windows_raw, focused_output=None, focus_order=None):
     """Build structured workspace model from raw JSON data."""
     ws_by_id = {}
     for ws in workspaces_raw:
@@ -367,6 +440,8 @@ def parse_state(workspaces_raw, windows_raw, focused_output=None):
                 "is_urgent": win.get("is_urgent", False),
                 "col_idx": col_idx,
                 "tile_idx": tile_idx,
+                "focus_timestamp": win.get("focus_timestamp"),
+                "focus_order": (focus_order or {}).get(win["id"], 0),
             }
         )
 
@@ -512,6 +587,8 @@ class MinimapWindow(Gtk.Window):
 
     def rebuild(self, workspaces):
         """Tear down and rebuild all widgets from fresh state."""
+        self._cancel_hover_label()
+        self._hovered_win_id = None
         self.tile_widgets.clear()
         
         try:
@@ -537,87 +614,74 @@ class MinimapWindow(Gtk.Window):
         }
         self._designated_win_ids.intersection_update(live_ids)
 
-        # To keep the "spine" (active column) at a fixed screen position,
-        # we build a symmetrical grid where the spine is always at the center.
-        # This way, when the grid is centered on screen, the spine stays put
-        # even if one workspace's focus shifts or content grows.
-
-        # l_max: max columns to the left of the spine
-        # r_max: max columns to the right of the spine
-        l_max = 0
-        r_max = 0
+        # Uniform cells are measured from the MAIN tiles only. Miniatures
+        # float beside their parent and never move it off the column center.
+        l_max = r_max = 0
         for ws in workspaces:
             acp = ws["active_col_pos"]
             n_cols = len(ws["columns"])
             l_max = max(l_max, acp)
             r_max = max(r_max, n_cols - 1 - acp)
             if ws["is_focused"]:
-                # Lock the grid width to the maximum possible extent for the
-                # focused workspace so it never resizes as focus moves between
-                # columns. Without this, m shrinks when the active column is
-                # near the centre (single workspace case), shifting all tiles.
+                # Keep the extent stable through any focused-column position.
                 l_max = max(l_max, n_cols - 1)
                 r_max = max(r_max, n_cols - 1)
-
-        # M is the distance from the spine to the edge of the symmetrical grid
-        m = max(l_max, r_max)
-        grid_width = 2 * m + 1
-        spine_index = m
+        spine_index = max(l_max, r_max)
+        grid_width = 2 * spine_index + 1
 
         grid = Gtk.Grid()
         grid.set_halign(Gtk.Align.CENTER)
         grid.set_valign(Gtk.Align.CENTER)
         grid.set_column_spacing(COL_SPACING)
-        grid.set_row_spacing(0)
-        # Homogeneous columns ensure the grid center aligns with the spine
         grid.set_column_homogeneous(True)
         grid.set_overflow(Gtk.Overflow.VISIBLE)
-
+        tag_badges = []
         grid_row = 0
+
         for ws_i, ws in enumerate(workspaces):
-            if ws_i > 0:
+            if ws_i:
                 spacer = Gtk.Box()
                 spacer.set_size_request(1, WS_SPACING)
                 grid.attach(spacer, 0, grid_row, grid_width, 1)
                 grid_row += 1
-
-            # Offset so the active column is at spine_index
             acp = ws["active_col_pos"]
             start_col = spine_index - acp
 
             for i, (col_idx, tiles) in enumerate(sorted(ws["columns"].items())):
-                col_box = Gtk.Box(
-                    orientation=Gtk.Orientation.VERTICAL,
-                    spacing=TILE_SPACING,
-                )
+                col_box = Gtk.Overlay()
+                col_box.set_halign(Gtk.Align.CENTER)
                 col_box.set_valign(Gtk.Align.CENTER)
                 col_box.set_overflow(Gtk.Overflow.VISIBLE)
                 if ws["is_focused"]:
-                    if start_col + i == spine_index:
+                    if i == acp:
                         col_box.add_css_class("minimap-spine-column")
                     else:
                         col_box.add_css_class("minimap-column")
                 else:
-                    if start_col + i == spine_index:
+                    if i == acp:
                         col_box.add_css_class("minimap-spine-column-unfocused")
                     else:
                         col_box.add_css_class("minimap-column-unfocused")
 
-                # Scale down icons for stacked columns so they don't dominate height
-                n_tiles = len(tiles)
-                if n_tiles > 1:
-                    col_box.add_css_class("minimap-col-stacked")
-                if n_tiles == 1:
-                    tile_icon_size = ICON_SIZE
-                elif n_tiles == 2:
-                    # Size n=2 so total column height == single-tile height:
-                    # 2*(icon + 2*stacked_border) + TILE_SPACING = ICON_SIZE + 2*TILE_PAD + 2*BORDER_WIDTH
-                    _single_h = ICON_SIZE + 2 * TILE_PAD + 2 * BORDER_WIDTH
-                    tile_icon_size = max(12, (_single_h - TILE_SPACING) // 2 - 4)
-                else:
-                    tile_icon_size = max(12, int(ICON_SIZE * 0.46))
+                # The strip overlaps the parent's right edge slightly. It
+                # does not participate in horizontal cell measurement, so
+                # grouped and ordinary MAIN icons share the same grid centers.
+                strip = None
+                if len(tiles) > 1:
+                    strip = Gtk.Box(
+                        orientation=Gtk.Orientation.VERTICAL,
+                        spacing=TILE_SPACING,
+                    )
+                    strip.set_halign(Gtk.Align.START)
+                    strip.set_valign(Gtk.Align.CENTER)
+                    strip.set_overflow(Gtk.Overflow.VISIBLE)
+                    col_box.add_overlay(strip)
+                    col_box.set_measure_overlay(strip, False)
+                    col_box.set_clip_overlay(strip, False)
 
-                for tile in tiles:
+                for display_idx, tile in enumerate(column_display_tiles(tiles)):
+                    is_mini = display_idx > 0
+                    tile_icon_size = MINI_ICON_SIZE if is_mini else ICON_SIZE
                     win_id = tile["id"]
                     title = tile.get("title", "")
                     is_focused = tile.get("is_focused", False)
@@ -651,14 +715,15 @@ class MinimapWindow(Gtk.Window):
                     else:
                         tile_box = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL)
                         tile_box.set_overflow(Gtk.Overflow.VISIBLE)
-                    tile_box.set_halign(Gtk.Align.FILL if n_tiles > 1 else Gtk.Align.CENTER)
+                    tile_box.set_halign(Gtk.Align.CENTER)
                     tile_box.set_valign(Gtk.Align.CENTER)
-                    tile_box.set_margin_top(CELL_PAD)
-                    tile_box.set_margin_bottom(CELL_PAD)
-                    tile_box.set_margin_start(CELL_PAD)
-                    tile_box.set_margin_end(CELL_PAD)
-                    if n_tiles > 1:
-                        tile_box.add_css_class("minimap-stacked")
+                    cell_pad = MINI_CELL_PAD if is_mini else CELL_PAD
+                    tile_box.set_margin_top(cell_pad)
+                    tile_box.set_margin_bottom(cell_pad)
+                    tile_box.set_margin_start(cell_pad)
+                    tile_box.set_margin_end(cell_pad)
+                    if is_mini:
+                        tile_box.add_css_class("minimap-mini")
 
                     icon_name = lookup_icon_name(tile["app_id"], self.icon_theme)
                     if os.path.isabs(icon_name):
@@ -667,10 +732,8 @@ class MinimapWindow(Gtk.Window):
                         icon = Gtk.Image.new_from_icon_name(icon_name)
                     icon.set_pixel_size(tile_icon_size)
                     icon.set_halign(Gtk.Align.CENTER)
-                    if n_tiles > 1:
-                        icon.set_hexpand(True)
 
-                    in_spine = start_col + i == spine_index
+                    in_spine = i == acp
                     is_bell_alert = agent_info[2] if agent_info else False
                     if tile.get("is_urgent") or is_bell_alert:
                         tile_box.add_css_class("minimap-tile-urgent")
@@ -694,11 +757,13 @@ class MinimapWindow(Gtk.Window):
                             if tile["is_focused"] and not _is_alert:
                                 agent_color = FOCUS_RING_COLOR[0]
                             agent_area = Gtk.DrawingArea()
-                            badge_size = max(16, ICON_SIZE // 2)
+                            badge_size = 12 if is_mini else max(16, ICON_SIZE // 2)
                             agent_area.set_size_request(badge_size, badge_size)
+                            # Center the agent badge on the tile's left edge.
                             agent_area.set_halign(Gtk.Align.START)
                             agent_area.set_valign(Gtk.Align.CENTER)
-                            agent_area.set_margin_start(-(badge_size // 2 + 9))
+                            edge_pad = MINI_TILE_PAD if is_mini else TILE_PAD + BORDER_WIDTH
+                            agent_area.set_margin_start(-(edge_pad + badge_size // 2))
                             agent_area.set_can_target(False)
 
                             def _draw_agent_badge(
@@ -749,11 +814,20 @@ class MinimapWindow(Gtk.Window):
 
                         if designated or num_tag is not None:
                             tri = Gtk.DrawingArea()
-                            dot_size = max(16, ICON_SIZE // 2) if num_tag else max(10, ICON_SIZE // 3)
+                            if is_mini:
+                                dot_size = 12 if num_tag else 8
+                            else:
+                                dot_size = max(16, ICON_SIZE // 2) if num_tag else max(10, ICON_SIZE // 3)
                             tri.set_size_request(dot_size, dot_size)
-                            tri.set_halign(Gtk.Align.END)
-                            tri.set_valign(Gtk.Align.CENTER)
-                            tri.set_margin_end(-(dot_size // 2 + 9))
+                            # Center designation dots/numbers on the bottom edge.
+                            tri.set_halign(Gtk.Align.CENTER)
+                            tri.set_margin_start(2)  # centered alignment halves this: +1px
+                            tri.set_valign(Gtk.Align.END)
+                            edge_pad = MINI_TILE_PAD if is_mini else TILE_PAD + BORDER_WIDTH
+                            # Large negative margins can make GTK expand tiny
+                            # dots. Account for that so their centers stay on
+                            # the edge rather than drifting inside the tile.
+                            tri.set_margin_bottom(-max(edge_pad + dot_size // 2, 2 * edge_pad))
                             tri.set_can_target(False)
                             _r = dot_size / 2
 
@@ -788,6 +862,7 @@ class MinimapWindow(Gtk.Window):
 
                             tri.set_draw_func(_draw_tag)
                             tile_box.add_overlay(tri)
+                            tag_badges.append(tri)
                     else:
                         tile_box.append(icon)
 
@@ -812,40 +887,47 @@ class MinimapWindow(Gtk.Window):
                     )
                     tile_box.add_controller(click)
 
-                    col_box.append(tile_box)
+                    if is_mini:
+                        strip.append(tile_box)
+                    else:
+                        col_box.set_child(tile_box)
                     self.tile_widgets[tile["id"]] = (tile_box, in_spine, ws["id"])
 
+                if strip is not None:
+                    # Anchor at the main tile's right face, using a positive
+                    # start margin: negative margins inflate GTK box allocations
+                    # and create an invisible click-blocking area over the parent.
+                    main_width = col_box.get_child().measure(Gtk.Orientation.HORIZONTAL, -1)[1]
+                    strip.set_margin_start(
+                        main_width - CELL_PAD + MINI_STRIP_GAP - MINI_CELL_PAD
+                    )
+                    # Reserve vertical space for long strips, without letting
+                    # their width inflate the uniform grid cells.
+                    strip_height = strip.measure(Gtk.Orientation.VERTICAL, -1)[1]
+                    col_box.set_size_request(-1, strip_height)
                 grid.attach(col_box, start_col + i, grid_row, 1, 1)
-
             grid_row += 1
 
-        # Span a dummy row across every grid column so GTK's column_homogeneous
-        # flag sees a widget in each column and allocates equal width to all of
-        # them.  Without this, GTK collapses unoccupied interior columns to 0 px
-        # when there is only one workspace, making the gap between tiles appear
-        # to change as focus (and therefore start_col) shifts.  The inter-
-        # workspace spacer incidentally did this for the multi-workspace case,
-        # which is why that case worked correctly.
-        if grid_width > 0:
-            spacer = Gtk.Box()
-            spacer.set_size_request(1, 1)
-            grid.attach(spacer, 0, grid_row, grid_width, 1)
+        # Keep empty interior cells from collapsing in a single-workspace grid.
+        spacer = Gtk.Box()
+        spacer.set_size_request(1, 1)
+        grid.attach(spacer, 0, grid_row, grid_width, 1)
 
-        # Wrap grid in an Overlay so the spine line can paint on TOP of tile
-        # faces, giving a continuous vertical accent from top to bottom.
-        # halign=CENTER aligns the line with the grid's center column, which
-        # is the spine column (by construction: spine_index = m, grid_width =
-        # 2m+1, column_homogeneous=True).
+        # The main icons (not the parent+strip group) are centered on the spine.
         grid_overlay = Gtk.Overlay()
         grid_overlay.set_child(grid)
         grid_overlay.set_overflow(Gtk.Overflow.VISIBLE)
-        spine_line = Gtk.Box()
+        spine_line = Gtk.DrawingArea()
         spine_line.set_size_request(SPINE_LINE_WIDTH, -1)
         spine_line.set_halign(Gtk.Align.CENTER)
         spine_line.set_valign(Gtk.Align.FILL)
         spine_line.set_margin_top(-60)
         spine_line.set_margin_bottom(-60)
-        spine_line.add_css_class("minimap-spine-line")
+        spine_line.set_draw_func(
+            lambda area, cr, width, height: draw_spine_line(
+                area, cr, width, height, tag_badges
+            )
+        )
         spine_line.set_can_target(False)  # don't intercept clicks meant for tiles
         grid_overlay.add_overlay(spine_line)
 
@@ -1079,6 +1161,10 @@ class MinimapApp(Gtk.Application):
         self._autohide_timer_id = None
         self._rebuild_pending = False
         self._is_first_show = True
+        # IPC timestamps are debounced. Local ordering also remembers brief
+        # tab focus immediately, and survives record replacements/layout moves.
+        self._focus_order = {}
+        self._focus_serial = 0
 
     def do_activate(self):
         self.hold()  # Keep app running even if the window is hidden
@@ -1208,6 +1294,7 @@ class MinimapApp(Gtk.Application):
             list(self._workspaces.values()),
             list(self._windows.values()),
             focused_output,
+            self._focus_order,
         )
         self._win.rebuild(ws_list)
         if self._is_first_show:
@@ -1258,6 +1345,7 @@ class MinimapApp(Gtk.Application):
             for w in self._windows.values():
                 w["is_focused"] = w["id"] == new_id
             self._focused_window_id = new_id
+            self._record_focus(new_id)
             if new_id and new_id in self._windows:
                 self._focused_ws_id = self._windows[new_id].get("workspace_id")
             elif new_id:
@@ -1270,6 +1358,18 @@ class MinimapApp(Gtk.Application):
                     pass
             self._full_rebuild()
 
+        elif "WindowFocusTimestampChanged" in event:
+            change = event["WindowFocusTimestampChanged"]
+            if change["id"] in self._windows:
+                self._windows[change["id"]]["focus_timestamp"] = change.get("focus_timestamp")
+                self._full_rebuild()
+
+        elif "WindowUrgencyChanged" in event:
+            change = event["WindowUrgencyChanged"]
+            if change["id"] in self._windows:
+                self._windows[change["id"]]["is_urgent"] = change["urgent"]
+                self._full_rebuild()
+
         elif "WindowOpenedOrChanged" in event:
             win = event["WindowOpenedOrChanged"]["window"]
             self._windows[win["id"]] = win
@@ -1278,6 +1378,8 @@ class MinimapApp(Gtk.Application):
                 for w in self._windows.values():
                     if w["id"] != win["id"]:
                         w["is_focused"] = False
+                if self._focused_window_id != win["id"]:
+                    self._record_focus(win["id"])
                 self._focused_window_id = win["id"]
                 self._focused_ws_id = win.get("workspace_id")
             ws_id = win.get("workspace_id")
@@ -1293,6 +1395,7 @@ class MinimapApp(Gtk.Application):
         elif "WindowClosed" in event:
             wid = event["WindowClosed"]["id"]
             self._windows.pop(wid, None)
+            self._focus_order.pop(wid, None)
             if self._focused_window_id == wid:
                 self._focused_window_id = None
             self._prune_stale_tags()
@@ -1357,11 +1460,21 @@ class MinimapApp(Gtk.Application):
                     pass
             self._full_rebuild()
 
+    def _record_focus(self, win_id):
+        if win_id is not None:
+            self._focus_serial += 1
+            self._focus_order[win_id] = self._focus_serial
+
     def _sync_focus_from_windows(self):
+        self._focus_order = {
+            wid: order for wid, order in self._focus_order.items()
+            if wid in self._windows
+        }
         self._focused_window_id = None
         self._focused_ws_id = None
         for w in self._windows.values():
             if w.get("is_focused"):
+                self._record_focus(w["id"])
                 self._focused_window_id = w["id"]
                 self._focused_ws_id = w.get("workspace_id")
                 break
@@ -1427,7 +1540,7 @@ window {{
     border-radius: {UNFOCUSED_TILE_RADIUS};
     padding: {TILE_PAD + BORDER_WIDTH}px;
     background-color: {_c(INACTIVE_FILL_COLOR)};
-    box-shadow: 0 0 0 2px rgb(0, 0, 0), 0 4px 12px rgba(0, 0, 0, 0.95), 0 8px 24px rgba(0, 0, 0, 0.95);
+    box-shadow: {TILE_SHADOW};
 }}
 
 .minimap-tile-spine {{
@@ -1435,7 +1548,7 @@ window {{
     border-radius: {UNFOCUSED_TILE_RADIUS};
     padding: {TILE_PAD + BORDER_WIDTH}px;
     background-color: {_c(INACTIVE_FILL_COLOR)};
-    box-shadow: 0 0 0 2px rgb(0, 0, 0), 0 4px 12px rgba(0, 0, 0, 0.95), 0 8px 24px rgba(0, 0, 0, 0.95);
+    box-shadow: {TILE_SHADOW};
 }}
 
 .minimap-tile-workspace {{
@@ -1443,7 +1556,7 @@ window {{
     border-radius: {UNFOCUSED_TILE_RADIUS};
     padding: {TILE_PAD + BORDER_WIDTH}px;
     background-color: {_c(INACTIVE_FILL_COLOR)};
-    box-shadow: inset 0 0 0 {BORDER_WIDTH}px #DA9E8A, 0 0 0 2px rgb(0, 0, 0), 0 4px 12px rgba(0, 0, 0, 0.95), 0 8px 24px rgba(0, 0, 0, 0.95);
+    box-shadow: {TILE_SHADOW}, inset 0 0 0 {BORDER_WIDTH}px #DA9E8A;
 }}
 
 .minimap-tile-focused {{
@@ -1451,7 +1564,7 @@ window {{
     border-radius: {"24px" if FOCUS_RING_CIRCLE else f"{TILE_BORDER_RADIUS}px"};
     padding: {TILE_PAD + BORDER_WIDTH}px;
     background-color: {_c(INACTIVE_FILL_COLOR)};
-    box-shadow: inset 0 0 0 {BORDER_WIDTH}px {_c(FOCUS_RING_COLOR)}, 0 0 0 2px rgb(0, 0, 0), 0 4px 12px rgba(0, 0, 0, 0.95), 0 8px 24px rgba(0, 0, 0, 0.95);
+    box-shadow: {TILE_SHADOW}, inset 0 0 0 {BORDER_WIDTH}px {_c(FOCUS_RING_COLOR)};
 }}
 
 .minimap-tile-urgent {{
@@ -1459,7 +1572,7 @@ window {{
     border-radius: {"24px" if FOCUS_RING_CIRCLE else f"{TILE_BORDER_RADIUS}px"};
     padding: {TILE_PAD + BORDER_WIDTH}px;
     background-color: {_c(INACTIVE_FILL_COLOR)};
-    box-shadow: inset 0 0 0 {BORDER_WIDTH}px #FF5555, 0 0 0 2px rgb(0, 0, 0), 0 4px 14px rgba(255, 85, 85, 0.95);
+    box-shadow: 0 4px 16px rgba(255, 85, 85, 0.95), 0 0 0 {TILE_OUTLINE_WIDTH + 2}px rgb(0, 0, 0), 0 0 0 {TILE_OUTLINE_WIDTH}px {_c(TILE_OUTLINE_COLOR)}, inset 0 0 0 {BORDER_WIDTH}px #FF5555;
 }}
 
 .minimap-empty {{
@@ -1473,21 +1586,21 @@ window {{
     border: none;
     border-radius: 8px;
     padding: 4px;
-    box-shadow: 0 0 0 2px rgb(0, 0, 0), 0 3px 6px rgba(0, 0, 0, 0.95), 0 6px 12px rgba(0, 0, 0, 0.95);
+    box-shadow: {STACKED_TILE_SHADOW};
 }}
 
 .minimap-tile-workspace.minimap-stacked {{
     border: none;
     border-radius: 8px;
     padding: 4px;
-    box-shadow: inset 0 0 0 4px #DA9E8A, 0 0 0 2px rgb(0, 0, 0), 0 3px 6px rgba(0, 0, 0, 0.95), 0 6px 12px rgba(0, 0, 0, 0.95);
+    box-shadow: {STACKED_TILE_SHADOW}, inset 0 0 0 4px #DA9E8A;
 }}
 
 .minimap-tile-focused.minimap-stacked {{
     border: none;
     border-radius: 8px;
     padding: 4px;
-    box-shadow: inset 0 0 0 4px {_c(FOCUS_RING_COLOR)}, 0 0 0 2px rgb(0, 0, 0), 0 3px 6px rgba(0, 0, 0, 0.95), 0 6px 12px rgba(0, 0, 0, 0.95);
+    box-shadow: {STACKED_TILE_SHADOW}, inset 0 0 0 4px {_c(FOCUS_RING_COLOR)};
 }}
 
 .minimap-column.minimap-col-stacked,
@@ -1499,9 +1612,23 @@ window {{
 }}
 
 
-.minimap-spine-line {{
-    background: linear-gradient(to bottom, {_c((SPINE_LINE_COLOR[0], 0.0))} 0%, {_c(SPINE_LINE_COLOR)} 15%, {_c(SPINE_LINE_COLOR)} 85%, {_c((SPINE_LINE_COLOR[0], 0.0))} 100%);
-    border-radius: 1px;
+/* Compact strip tiles keep their own hover, click, tag and urgency state. */
+.minimap-mini {{
+    border-radius: {MINI_TILE_RADIUS}px;
+    padding: {MINI_TILE_PAD}px;
+    box-shadow: 0 2px 5px 1px rgba(0, 0, 0, 0.9), 0 0 0 1px {_c(TILE_OUTLINE_COLOR)};
+}}
+
+.minimap-mini.minimap-tile-workspace {{
+    box-shadow: 0 2px 5px 1px rgba(0, 0, 0, 0.9), 0 0 0 1px {_c(TILE_OUTLINE_COLOR)}, inset 0 0 0 2px #DA9E8A;
+}}
+
+.minimap-mini.minimap-tile-focused {{
+    box-shadow: 0 2px 5px 1px rgba(0, 0, 0, 0.9), 0 0 0 1px {_c(TILE_OUTLINE_COLOR)}, inset 0 0 0 2px {_c(FOCUS_RING_COLOR)};
+}}
+
+.minimap-mini.minimap-tile-urgent {{
+    box-shadow: 0 2px 8px rgba(255, 85, 85, 0.95), 0 0 0 1px {_c(TILE_OUTLINE_COLOR)}, inset 0 0 0 2px #FF5555;
 }}
 
 .minimap-hover-label {{

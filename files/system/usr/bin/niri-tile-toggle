@@ -1,98 +1,393 @@
-#!/bin/bash
-# Toggles between scroller mode and tile-scroll mode.
-#
-# Tile-scroll mode:
-#   - All columns on focused workspace set to 50% width (two full columns always visible)
-#   - center-focused-column never + dim unfocused to 0.9 + gaps 2 + focus-ring width 0
-#   - Black wallpaper
+#!/usr/bin/env python3
+"""
+Toggles between scroller mode and tile-scroll mode in Niri.
 
-CONFIG="$HOME/.config/niri/config.kdl"
-STATE_FILE="$HOME/.cache/niri-tile-toggle"
-WALLPAPER_FILE="$HOME/.cache/niri-tile-toggle-wallpaper"
-DEFAULT_WALLPAPER="$HOME/Pictures/Wallpapers/joonyeop-baek-GK6qXiHm6Iw-unsplash.jpg"
+Tile-scroll mode:
+  - All columns on all workspaces set to 50% width
+  - center-focused-column never + gaps 2 + focus-ring width 0
+  - default-column-width 50%
+  - All windows set to opacity 1.0
+  - Ghostty opacity 1.0 + black wallpaper
 
-resize_columns() {
-    COLUMN_WIDTH="$1" python3 << 'EOF'
-import os, json, subprocess, sys
+Exit restores the full snapshot taken at entry.
+Uses separate config-tile.kdl so config.kdl is NEVER modified in place.
+Uses file locking to prevent race conditions from rapid successive keypresses.
+Uses wallpaper and column width guards so backups can never be corrupted.
+"""
 
-width = os.environ['COLUMN_WIDTH']
+import fcntl
+import json
+import os
+import re
+import shutil
+import socket
+import subprocess
+import sys
 
-win_res = subprocess.run(['niri', 'msg', '--json', 'windows'], capture_output=True, text=True)
-ws_res  = subprocess.run(['niri', 'msg', '--json', 'workspaces'], capture_output=True, text=True)
-win_data = json.loads(win_res.stdout)
-ws_data  = json.loads(ws_res.stdout)
+CONFIG = os.path.expanduser("~/.config/niri/config.kdl")
+TILE_CONFIG = os.path.expanduser("~/.config/niri/config-tile.kdl")
+GHOSTTY_CONFIG = os.path.expanduser("~/.config/ghostty/config.ghostty")
+WALLPAPER_BACKUP = os.path.expanduser("~/.cache/niri-tile-toggle-wallpaper")
+DEFAULT_WALLPAPER = os.path.expanduser("~/Pictures/Wallpapers/pedernal-NM.jpg")
+TILE_WALLPAPER = os.path.expanduser("~/Pictures/Wallpapers/black.png")
+STATE_FILE = os.path.expanduser("~/.cache/niri-tile-toggle")
+LOCK_FILE = os.path.expanduser("~/.cache/niri-tile-toggle.lock")
+COLUMNS_FILE = os.path.expanduser("~/.cache/niri-tile-toggle-columns")
+COLUMNS_DEBUG = os.path.expanduser("~/.cache/niri-tile-toggle-columns-debug")
 
-focused_ws_id = next((ws['id'] for ws in ws_data if ws['is_focused']), None)
-if focused_ws_id is None:
-    sys.exit(0)
+FREEZE_MS = 200
 
-focused_win_id = next((w['id'] for w in win_data if w.get('is_focused')), None)
 
-# One representative window per column on the focused workspace
-cols = {}
-for w in win_data:
-    if w.get('workspace_id') != focused_ws_id:
-        continue
-    pos = w['layout'].get('pos_in_scrolling_layout')
-    if pos is None:
-        continue
-    col_idx = pos[0]
-    if col_idx not in cols:
-        cols[col_idx] = w['id']
+class NiriClient:
+    def __init__(self):
+        sock_path = os.environ.get("NIRI_SOCKET")
+        if not sock_path:
+            raise RuntimeError("NIRI_SOCKET environment variable not set")
+        self.s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        self.s.connect(sock_path)
+        self.buf = b""
 
-for win_id in sorted(cols.values()):
-    subprocess.run(['niri', 'msg', 'action', 'focus-window', '--id', str(win_id)])
-    subprocess.run(['niri', 'msg', 'action', 'set-column-width', width])
+    def request(self, req_obj):
+        line = json.dumps(req_obj) + "\n"
+        self.s.sendall(line.encode("utf-8"))
+        while b"\n" not in self.buf:
+            chunk = self.s.recv(4096)
+            if not chunk:
+                break
+            self.buf += chunk
+        idx = self.buf.index(b"\n")
+        line = self.buf[:idx]
+        self.buf = self.buf[idx + 1 :]
+        return json.loads(line.decode("utf-8"))
 
-# Restore original focus
-if focused_win_id:
-    subprocess.run(['niri', 'msg', 'action', 'focus-window', '--id', str(focused_win_id)])
-EOF
-}
+    def action(self, action_name, **kwargs):
+        return self.request({"Action": {action_name: kwargs}})
 
-if [ -f "$STATE_FILE" ]; then
-    # EXITING TILE MODE → RESTORE DEFAULTS
-    
-    # 1. Restore wallpaper
-    RESTORE_WALLPAPER=$(cat "$WALLPAPER_FILE" 2>/dev/null)
-    if [[ -z "$RESTORE_WALLPAPER" ]]; then
-        RESTORE_WALLPAPER="$DEFAULT_WALLPAPER"
-    fi
-    pkill swaybg
-    swaybg -i "$RESTORE_WALLPAPER" -m fill &
+    def close(self):
+        self.s.close()
 
-    # 2. Apply config changes
-    sed -i --follow-symlinks 's/^\(\s*\)center-focused-column "never"/\1center-focused-column "always"/' "$CONFIG"
-    sed -i --follow-symlinks 's/opacity 0\.9$/opacity 0.75/' "$CONFIG"
-    sed -i --follow-symlinks 's/^\(\s*gaps \)2/\16/' "$CONFIG"
-    sed -i --follow-symlinks 's/width 0 \/\/ 1 current/width 1 \/\/ 1 current/' "$CONFIG"
-    sed -i --follow-symlinks 's/width 2 \/\/ 3 current/width 3 \/\/ 3 current/' "$CONFIG"
 
-    # 3. Restore column widths
-    resize_columns "76.666667%"
+def ensure_tile_config():
+    """Generate config-tile.kdl from config.kdl with tile overrides."""
+    with open(CONFIG) as f:
+        cfg = f.read()
 
-    rm -f "$STATE_FILE"
-else
-    # ENTERING TILE MODE
-    
-    # 1. Save wallpaper and go black
-    CURRENT_WALLPAPER=$(grep -oP '(?<=spawn-at-startup "swaybg" "-i" ")[^"]+' "$CONFIG")
-    if [[ -z "$CURRENT_WALLPAPER" ]]; then
-        CURRENT_WALLPAPER="$DEFAULT_WALLPAPER"
-    fi
-    echo "$CURRENT_WALLPAPER" > "$WALLPAPER_FILE"
-    pkill swaybg
-    swaybg -c "#000000" &
+    cfg = re.sub(r'center-focused-column "[^"]*"', 'center-focused-column "never"', cfg)
+    cfg = re.sub(r"(?m)^(\s*)gaps \d+", r"\g<1>gaps 2", cfg)
+    cfg = re.sub(
+        r"width \d+ // \*\*don't remove this comment, it's needed by niri-tile-toggle\*\*",
+        r"width 2 // **don't remove this comment, it's needed by niri-tile-toggle**",
+        cfg,
+    )
+    cfg = re.sub(
+        r"default-column-width\s*\{\s*proportion\s*0\.[0-9]+;\s*\}",
+        "default-column-width { proportion 0.5; }",
+        cfg,
+    )
+    cfg = re.sub(r"opacity 0\.[0-9]+", "opacity 1.0", cfg)
 
-    # 2. Apply config changes
-    sed -i --follow-symlinks 's/^\(\s*\)center-focused-column "always"/\1center-focused-column "never"/' "$CONFIG"
-    sed -i --follow-symlinks 's/opacity 0\.75$/opacity 0.9/' "$CONFIG"
-    sed -i --follow-symlinks 's/^\(\s*gaps \)6/\12/' "$CONFIG"
-    sed -i --follow-symlinks 's/width 1 \/\/ 1 current/width 0 \/\/ 1 current/' "$CONFIG"
-    sed -i --follow-symlinks 's/width 3 \/\/ 3 current/width 2 \/\/ 3 current/' "$CONFIG"
+    tmp = TILE_CONFIG + ".tmp"
+    with open(tmp, "w") as f:
+        f.write(cfg)
+    os.replace(tmp, TILE_CONFIG)
 
-    # 3. Set ALL columns on workspace to 50%
-    resize_columns "50%"
 
-    touch "$STATE_FILE"
-fi
+def get_default_proportion():
+    try:
+        with open(CONFIG) as f:
+            m = re.search(r"default-column-width\s*\{\s*proportion\s*(0\.[0-9]+);\s*\}", f.read())
+            if m:
+                return float(m.group(1)) * 100.0
+    except Exception:
+        pass
+    return 76.666667
+
+
+def get_column_widths(client, config_path):
+    win_data = client.request("Windows").get("Ok", {}).get("Windows", [])
+    ws_data = client.request("Workspaces").get("Ok", {}).get("Workspaces", [])
+    out_data = client.request("Outputs").get("Ok", {}).get("Outputs", {})
+
+    gaps = 4
+    try:
+        with open(config_path) as f:
+            m = re.search(r"(?m)^\s+gaps (\d+)", f.read())
+            if m:
+                gaps = int(m.group(1))
+    except Exception:
+        pass
+    correction = gaps - 1
+
+    ws_to_output = {ws["id"]: ws.get("output") for ws in ws_data}
+    output_widths = {}
+    for name, out in out_data.items():
+        logical = out.get("logical") or {}
+        w = logical.get("width")
+        if w:
+            output_widths[name] = w
+
+    col_widths = {}
+    for w in win_data:
+        ws_id = w.get("workspace_id")
+        if ws_id is None:
+            continue
+        layout = w.get("layout") or {}
+        pos = layout.get("pos_in_scrolling_layout")
+        if pos is None:
+            continue
+        window_size = layout.get("window_size")
+        tile_size = layout.get("tile_size")
+        if window_size is None:
+            continue
+        key = f"({ws_id}, {pos[0]})"
+        if key in col_widths:
+            continue
+
+        out_w = output_widths.get(ws_to_output.get(ws_id))
+        is_full = False
+        if out_w and tile_size:
+            if tile_size[0] >= (out_w - 2 * gaps - 2):
+                is_full = True
+        if is_full:
+            col_widths[key] = "100%"
+        else:
+            col_widths[key] = window_size[0] - correction
+
+    return col_widths, output_widths, ws_to_output
+
+
+def resize_all_columns(client, proportion=50.0):
+    win_data = client.request("Windows").get("Ok", {}).get("Windows", [])
+    focused_win_id = next((w["id"] for w in win_data if w.get("is_focused")), None)
+
+    cols = {}
+    for w in win_data:
+        ws_id = w.get("workspace_id")
+        if ws_id is None:
+            continue
+        pos = (w.get("layout") or {}).get("pos_in_scrolling_layout")
+        if pos is None:
+            continue
+        key = f"({ws_id}, {pos[0]})"
+        if key not in cols:
+            cols[key] = (ws_id, pos[0], w["id"])
+
+    focused_ws_id = None
+    if focused_win_id:
+        f_win = next((w for w in win_data if w["id"] == focused_win_id), None)
+        if f_win:
+            focused_ws_id = f_win.get("workspace_id")
+
+    sorted_cols = sorted(
+        cols.items(),
+        key=lambda item: (1 if item[1][0] == focused_ws_id else 0, item[1][0], item[1][1]),
+    )
+
+    for key, (ws_id, col_idx, win_id) in sorted_cols:
+        client.action("FocusWindow", id=win_id)
+        client.action("SetColumnWidth", change={"SetProportion": proportion})
+
+    if focused_win_id:
+        client.action("FocusWindow", id=focused_win_id)
+
+
+def restore_column_widths(client, col_widths, output_widths, ws_to_output, default_prop=76.666667):
+    win_data = client.request("Windows").get("Ok", {}).get("Windows", [])
+    focused_win_id = next((w["id"] for w in win_data if w.get("is_focused")), None)
+
+    cols = {}
+    for w in win_data:
+        ws_id = w.get("workspace_id")
+        if ws_id is None:
+            continue
+        pos = (w.get("layout") or {}).get("pos_in_scrolling_layout")
+        if pos is None:
+            continue
+        key = f"({ws_id}, {pos[0]})"
+        if key not in cols:
+            cols[key] = (ws_id, pos[0], w["id"])
+
+    focused_ws_id = None
+    if focused_win_id:
+        f_win = next((w for w in win_data if w["id"] == focused_win_id), None)
+        if f_win:
+            focused_ws_id = f_win.get("workspace_id")
+
+    sorted_cols = sorted(
+        cols.items(),
+        key=lambda item: (1 if item[1][0] == focused_ws_id else 0, item[1][0], item[1][1]),
+    )
+
+    for key, (ws_id, col_idx, win_id) in sorted_cols:
+        width = col_widths.get(key)
+        out_w = output_widths.get(ws_to_output.get(ws_id), 1536)
+
+        is_50 = False
+        if isinstance(width, (int, float)) and out_w:
+            if 0.45 <= (width / out_w) <= 0.55:
+                is_50 = True
+
+        client.action("FocusWindow", id=win_id)
+        if width == "100%":
+            client.action("SetColumnWidth", change={"SetProportion": 100.0})
+        elif width is None or width == "default" or is_50:
+            client.action("SetColumnWidth", change={"SetProportion": default_prop})
+        else:
+            try:
+                val = int(width)
+                client.action("SetColumnWidth", change={"SetFixed": val})
+            except ValueError:
+                client.action("SetColumnWidth", change={"SetProportion": default_prop})
+
+    if focused_win_id:
+        client.action("FocusWindow", id=focused_win_id)
+
+
+def enter_tile_mode(client):
+    # 1. Freeze screen immediately
+    client.action("DoScreenTransition", delay_ms=FREEZE_MS)
+
+    # 2. Save current column widths (never overwrite good non-50% sizes with 50% values)
+    saved_widths = {}
+    if os.path.exists(COLUMNS_FILE):
+        try:
+            with open(COLUMNS_FILE) as f:
+                saved_widths = json.load(f)
+        except Exception:
+            pass
+
+    cur_widths, output_widths, ws_to_output = get_column_widths(client, CONFIG)
+    col_widths = dict(saved_widths)
+
+    for key, w in cur_widths.items():
+        ws_id = int(key.strip("()").split(",")[0])
+        out_w = output_widths.get(ws_to_output.get(ws_id), 1536)
+        is_50 = False
+        if isinstance(w, (int, float)) and out_w:
+            if 0.45 <= (w / out_w) <= 0.55:
+                is_50 = True
+
+        if not is_50:
+            col_widths[key] = w
+        elif key not in col_widths:
+            col_widths[key] = "default"
+
+    with open(COLUMNS_FILE, "w") as f:
+        json.dump(col_widths, f)
+    shutil.copyfile(COLUMNS_FILE, COLUMNS_DEBUG)
+
+    # 3. Snapshot wallpaper (guarded: never save black as the backup wallpaper)
+    try:
+        cur_wp = subprocess.check_output(["noctalia", "msg", "wallpaper-get"], text=True).strip()
+        if cur_wp and cur_wp != TILE_WALLPAPER:
+            with open(WALLPAPER_BACKUP, "w") as f:
+                f.write(cur_wp)
+        subprocess.run(["noctalia", "msg", "wallpaper-set", TILE_WALLPAPER], capture_output=True)
+    except Exception:
+        pass
+
+    # 4. Ghostty opacity to 1.0
+    if os.path.exists(GHOSTTY_CONFIG):
+        try:
+            with open(GHOSTTY_CONFIG) as f:
+                g_text = f.read()
+            g_mod = re.sub(r"^background-opacity = .*", "background-opacity = 1", g_text, flags=re.M)
+            with open(GHOSTTY_CONFIG, "w") as f:
+                f.write(g_mod)
+            subprocess.run(["pkill", "-SIGUSR2", "ghostty"], capture_output=True)
+        except Exception:
+            pass
+
+    # 5. Load tile configuration (leaves config.kdl completely untouched!)
+    ensure_tile_config()
+    client.action("LoadConfigFile", path=TILE_CONFIG)
+
+    # 6. Resize all columns across all workspaces to 50%
+    resize_all_columns(client, 50.0)
+
+    # 7. Mark tile mode active
+    with open(STATE_FILE, "w") as f:
+        f.write("tile\n")
+
+
+def exit_tile_mode(client):
+    # 1. Freeze screen immediately
+    client.action("DoScreenTransition", delay_ms=FREEZE_MS)
+
+    # 2. Restore normal config (leaves config.kdl completely untouched!)
+    client.action("LoadConfigFile", path=CONFIG)
+
+    # 3. Restore wallpaper (fallback to default if corrupted/black)
+    wp_to_restore = DEFAULT_WALLPAPER
+    if os.path.exists(WALLPAPER_BACKUP):
+        try:
+            with open(WALLPAPER_BACKUP) as f:
+                saved = f.read().strip()
+            if saved and saved != TILE_WALLPAPER and os.path.exists(saved):
+                wp_to_restore = saved
+        except Exception:
+            pass
+    try:
+        subprocess.run(["noctalia", "msg", "wallpaper-set", wp_to_restore], capture_output=True)
+    except Exception:
+        pass
+
+    # 4. Restore Ghostty opacity to 0.9
+    if os.path.exists(GHOSTTY_CONFIG):
+        try:
+            with open(GHOSTTY_CONFIG) as f:
+                g_text = f.read()
+            g_mod = re.sub(r"^background-opacity = .*", "background-opacity = 0.9", g_text, flags=re.M)
+            with open(GHOSTTY_CONFIG, "w") as f:
+                f.write(g_mod)
+            subprocess.run(["pkill", "-SIGUSR2", "ghostty"], capture_output=True)
+        except Exception:
+            pass
+
+    # 5. Restore column widths
+    default_prop = get_default_proportion()
+    col_widths = {}
+    if os.path.exists(COLUMNS_FILE):
+        try:
+            with open(COLUMNS_FILE) as f:
+                col_widths = json.load(f)
+        except Exception:
+            pass
+
+    _, output_widths, ws_to_output = get_column_widths(client, CONFIG)
+    restore_column_widths(client, col_widths, output_widths, ws_to_output, default_prop)
+
+    # 6. Clean up state file (keep COLUMNS_FILE and WALLPAPER_BACKUP for persistence)
+    try:
+        if os.path.exists(STATE_FILE):
+            os.remove(STATE_FILE)
+    except OSError:
+        pass
+
+
+def main():
+    # Lock to prevent race conditions if Mod+I is pressed rapidly in succession
+    os.makedirs(os.path.expanduser("~/.cache"), exist_ok=True)
+    lock_fd = open(LOCK_FILE, "w")
+    try:
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except (BlockingIOError, OSError):
+        # Already running another toggle instance; drop to prevent corruption
+        sys.exit(0)
+
+    try:
+        client = NiriClient()
+    except Exception as e:
+        print(f"Error connecting to niri socket: {e}", file=sys.stderr)
+        sys.exit(1)
+
+    if os.path.exists(STATE_FILE):
+        exit_tile_mode(client)
+    else:
+        enter_tile_mode(client)
+
+    client.close()
+
+
+if __name__ == "__main__":
+    main()
