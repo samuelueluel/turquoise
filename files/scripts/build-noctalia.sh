@@ -6,11 +6,12 @@ set -euo pipefail
 BUILD_DIR="$(mktemp -d)"
 trap "rm -rf '$BUILD_DIR'" EXIT
 
-# Fetch latest release tarball URL from noctalia-dev/noctalia
-RELEASE_URL="$(curl -sL https://api.github.com/repos/noctalia-dev/noctalia/releases/latest | jq -r '.assets[] | select(.name | endswith(".tar.gz")) | .browser_download_url' | head -n 1)"
+# Fixed latest-release asset URL: avoids the unauthenticated GitHub API, which
+# rate-limits shared CI runner IPs and returns an error object instead of assets.
+RELEASE_URL="https://github.com/noctalia-dev/noctalia/releases/latest/download/noctalia-latest.tar.gz"
 
 echo "Downloading Noctalia release from: ${RELEASE_URL}"
-curl -sL "${RELEASE_URL}" | tar -xzf - -C "$BUILD_DIR"
+curl -fsSL --retry 5 --retry-delay 5 "${RELEASE_URL}" | tar -xzf - -C "$BUILD_DIR"
 
 cd "$BUILD_DIR"/noctalia-*
 
