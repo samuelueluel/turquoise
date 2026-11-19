@@ -59,6 +59,7 @@ modules:
       install-weak-deps: false
       packages:
         - scx-scheds
+        - scx-tools # scx_loader daemon + scxctl (split out of scx-scheds)
 
   # ── Firmware (doc 3.D / 5.D) ──────────────────────────────────────────────
   # linux-firmware: ensure current (must NOT be the ROCm-breaking 20251125 build).
