@@ -228,7 +228,6 @@ modules:
         - gvfs-smb # GVFS backend for SMB/Windows network shares
         - gvfs-nfs # GVFS backend for NFS mounts
         - gvfs-fuse # exposes GVFS mounts as FUSE filesystem paths
-        - gvfs-archive # GVFS backend for browsing archives as directories
         - ntfs-3g # think already in base-main
         - exfatprogs # think already in base-main
         - dosfstools # think already in base-main
@@ -326,7 +325,6 @@ modules:
         - mpc # minimalist CLI client for mpd scripting
         - beets # music library manager and tagger
         - beets-plugins # extra beets plugins
-        - beets-doc # beets documentation
         # yt-dlp → homebrew: yt-dlp
         - ffmpeg # think already in base-main
         - gstreamer1-plugin-libav # think already in base-main
