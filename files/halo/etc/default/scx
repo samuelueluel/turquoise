@@ -1,0 +1,10 @@
+# Configuration for scx.service (shipped by scx-scheds; overrides the package default).
+# scx_lavd (latency-aware) keeps niri/Zed smooth under heavy Stata/LLM load on the
+# 16-core dual-CCD CPU (<1% penalty to the background job). See hardware note section 7.
+# --autopower: picks performance/balanced/powersave from the system power profile.
+#
+# The old scx_loader/scxctl D-Bus loader was dropped by the scx COPR in 1.1.4.
+# Change live:  sudo systemctl edit/restart scx.service, or `scxcli` for one-offs.
+# Check active: cat /sys/kernel/sched_ext/root/ops
+SCX_SCHEDULER=scx_lavd
+SCX_FLAGS='--autopower'

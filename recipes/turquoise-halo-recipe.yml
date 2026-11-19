@@ -49,8 +49,8 @@ modules:
 
   # ── sched-ext userspace schedulers (doc 7) ────────────────────────────────
   # scx_lavd / scx_rusty for smooth desktop under heavy Stata/LLM load on the
-  # 16-core dual-CCD CPU. Driven by scx_loader (enabled below); default scheduler
-  # is set in files/halo/etc/scx_loader.toml. Manage live with `scxctl`.
+  # 16-core dual-CCD CPU. Driven by scx.service (enabled below); scheduler and
+  # flags are set in files/halo/etc/default/scx.
   - type: dnf
     repos:
       copr:
@@ -59,7 +59,6 @@ modules:
       install-weak-deps: false
       packages:
         - scx-scheds
-        - scx-tools # scx_loader daemon + scxctl (split out of scx-scheds)
 
   # ── Firmware (doc 3.D / 5.D) ──────────────────────────────────────────────
   # linux-firmware: ensure current (must NOT be the ROCm-breaking 20251125 build).
@@ -96,11 +95,11 @@ modules:
 
   # ── Enable halo services ──────────────────────────────────────────────────
   # ac-wakeup-disable: stops the AC adapter triggering immediate resume (doc 3.E).
-  # scx_loader: D-Bus daemon that loads the scheduler from scx_loader.toml at boot.
+  # scx: starts the sched-ext scheduler from /etc/default/scx at boot.
   # tuned: dynamically applies kernel tuning profiles.
   - type: systemd
     system:
       enabled:
         - ac-wakeup-disable.service
-        - scx_loader.service
+        - scx.service
         - tuned.service

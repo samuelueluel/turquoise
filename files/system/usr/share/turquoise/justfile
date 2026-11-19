@@ -1011,9 +1011,9 @@ halo-verify:
     fi
 
     echo -e "\033[34msched-ext schedulers\033[0m"
-    systemctl is-enabled scx_loader.service &>/dev/null && pass "scx_loader.service enabled" || fail "scx_loader.service not enabled"
-    SCX="$(scxctl get 2>/dev/null || sudo -n scxctl get 2>/dev/null || true)"
-    [[ -n "$SCX" ]] && pass "active scheduler: $SCX" || warn "scxctl get returned nothing (try: sudo scxctl get)"
+    systemctl is-enabled scx.service &>/dev/null && pass "scx.service enabled" || fail "scx.service not enabled"
+    SCX="$(cat /sys/kernel/sched_ext/root/ops 2>/dev/null || true)"
+    [[ -n "$SCX" ]] && pass "active scheduler: $SCX" || warn "no sched-ext scheduler active (check: systemctl status scx.service)"
 
     echo -e "\033[34mAC-wakeup suspend fix\033[0m"
     systemctl is-enabled ac-wakeup-disable.service &>/dev/null && pass "ac-wakeup-disable.service enabled" || fail "ac-wakeup-disable.service not enabled"
