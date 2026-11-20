@@ -106,12 +106,16 @@ modules:
   # Uses replace (distro-sync) so the COPR version wins even if base image
   # already has the same or older version installed.
   # Secure Boot validation must be disabled in BIOS (verified disabled).
+  # from-repo lists BOTH repos (dnf5 --repo takes a comma list): when the latest
+  # stable series equals Fedora's series, @kernel-vanilla/stable is empty by design
+  # and the kernels live only in its runtime dependency @kernel-vanilla/fedora.
+  # Naming stable alone made the swap a silent no-op on F45 (stock kernel shipped).
   - type: dnf
     repos:
       copr:
         - "@kernel-vanilla/stable"
     replace:
-      - from-repo: copr:copr.fedorainfracloud.org:group_kernel-vanilla:stable
+      - from-repo: copr:copr.fedorainfracloud.org:group_kernel-vanilla:stable,coprdep:copr.fedorainfracloud.org:group_kernel-vanilla:fedora
         packages:
           - kernel
           - kernel-core
